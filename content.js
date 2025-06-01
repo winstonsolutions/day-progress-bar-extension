@@ -92,10 +92,29 @@ function createProgressBar() {
   settingsBtn.addEventListener("click", toggleSettingsPanel);
   container.appendChild(settingsBtn);
 
-  // Create progress percentage indicator (centered)
-  const progressPercent = document.createElement("div");
+  // 创建时间范围容器
+  const timeRangeContainer = document.createElement("div");
+  timeRangeContainer.id = "day-progress-time-range";
+
+  // 创建开始时间显示
+  const startTimeDisplay = document.createElement("span");
+  startTimeDisplay.id = "day-progress-start-time-display";
+
+  // 创建百分比显示
+  const progressPercent = document.createElement("span");
   progressPercent.id = "day-progress-percentage";
-  container.appendChild(progressPercent);
+
+  // 创建结束时间显示
+  const endTimeDisplay = document.createElement("span");
+  endTimeDisplay.id = "day-progress-end-time-display";
+
+  // 添加到时间范围容器
+  timeRangeContainer.appendChild(startTimeDisplay);
+  timeRangeContainer.appendChild(progressPercent);
+  timeRangeContainer.appendChild(endTimeDisplay);
+
+  // 添加到主容器
+  container.appendChild(timeRangeContainer);
 
   // Create time info (right aligned)
   const timeInfo = document.createElement("div");
@@ -273,6 +292,8 @@ function updateProgressBar() {
   const bar = document.getElementById("day-progress-bar");
   const timeInfo = document.getElementById("day-progress-time-info");
   const percentDisplay = document.getElementById("day-progress-percentage");
+  const startTimeDisplay = document.getElementById("day-progress-start-time-display");
+  const endTimeDisplay = document.getElementById("day-progress-end-time-display");
 
   if (bar && timeInfo) {
     // 应用进度百分比到进度条 - 确保可见
@@ -284,9 +305,17 @@ function updateProgressBar() {
 
     timeInfo.textContent = `Total: ${totalHours} | Remaining: ${remainingTime}`;
 
-    // 显示进度百分比
+    // 显示进度百分比和起止时间
     if (percentDisplay) {
       percentDisplay.textContent = `${Math.round(progress)}%`;
+    }
+
+    if (startTimeDisplay) {
+      startTimeDisplay.textContent = workStartTime;
+    }
+
+    if (endTimeDisplay) {
+      endTimeDisplay.textContent = workEndTime;
     }
 
     console.log("进度条和时间信息已更新");

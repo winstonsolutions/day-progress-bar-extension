@@ -82,17 +82,12 @@ function createProgressBar() {
   const container = document.createElement("div");
   container.id = "day-progress-bar-container";
 
-  // Create time info
-  const timeInfo = document.createElement("div");
-  timeInfo.id = "day-progress-time-info";
-  container.appendChild(timeInfo);
+  // Create progress bar first (as background)
+  const bar = document.createElement("div");
+  bar.id = "day-progress-bar";
+  container.appendChild(bar);
 
-  // Create progress percentage indicator
-  const progressPercent = document.createElement("div");
-  progressPercent.id = "day-progress-percentage";
-  container.appendChild(progressPercent);
-
-  // Create settings button with Material Design icon
+  // Create settings button with clock icon
   const settingsBtn = document.createElement("div");
   settingsBtn.id = "day-progress-settings-btn";
   settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -103,10 +98,15 @@ function createProgressBar() {
   settingsBtn.addEventListener("click", toggleSettingsPanel);
   container.appendChild(settingsBtn);
 
-  // Create progress bar - 放到后面创建，确保在UI元素上方显示
-  const bar = document.createElement("div");
-  bar.id = "day-progress-bar";
-  container.appendChild(bar);
+  // Create progress percentage indicator (centered)
+  const progressPercent = document.createElement("div");
+  progressPercent.id = "day-progress-percentage";
+  container.appendChild(progressPercent);
+
+  // Create time info (right aligned)
+  const timeInfo = document.createElement("div");
+  timeInfo.id = "day-progress-time-info";
+  container.appendChild(timeInfo);
 
   // Create settings panel (initially hidden)
   const settingsPanel = document.createElement("div");

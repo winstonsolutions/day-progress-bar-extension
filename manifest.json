@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Google Calendar Time Progress Bar",
+  "name": "Work Hours Progress Bar",
   "version": "1.0",
-  "description": "Displays a live time progress bar on Google Calendar.",
+  "description": "Displays a live work hours progress bar on any website.",
   "content_scripts": [
     {
-      "matches": ["https://calendar.google.com/*"],
+      "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["style.css"]
     }

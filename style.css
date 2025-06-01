@@ -223,14 +223,14 @@
   bottom: 28px;
   left: 40px;
   background: white;
-  padding: 16px;
+  padding: 20px;
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
   z-index: 1000000;
   display: flex;
   flex-direction: column;
-  width: 220px;
+  width: 260px;
   pointer-events: auto;
   font-family: 'Google Sans', Roboto, Arial, sans-serif;
 }
@@ -315,69 +315,114 @@
 }
 
 .countdown-quick-button {
-  background-color: #f8f9fa;
+  border-radius: 4px;
+  padding: 8px 0;
+  background-color: #f1f3f4;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  font-size: 14px;
+  color: #5f6368;
+  cursor: pointer;
+  transition: all 0.2s;
   font-weight: 500;
+  outline: none;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 36px;
 }
 
 .countdown-quick-button:hover {
-  background-color: #f1f3f4;
-  border-color: rgba(0, 0, 0, 0.2);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  background-color: #e8eaed;
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #202124;
 }
 
 .countdown-quick-button:active {
-  background-color: #e8eaed;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) inset;
+  background-color: #dadce0;
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 #countdown-start-custom {
   background-color: #1a73e8;
   color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
   font-weight: 500;
-  border-color: #1a73e8;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  outline: none;
+  height: 36px;
+  box-sizing: border-box;
 }
 
 #countdown-start-custom:hover {
   background-color: #1765cc;
-  border-color: #1765cc;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 #countdown-start-custom:active {
-  background-color: #1566c5;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) inset;
+  background-color: #1557b0;
 }
 
 #countdown-stop {
   background-color: #ea4335;
   color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
   font-weight: 500;
-  border-color: #ea4335;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  outline: none;
+  height: 36px;
+  box-sizing: border-box;
 }
 
 #countdown-stop:hover {
   background-color: #d93025;
-  border-color: #d93025;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 #countdown-reset {
   background-color: #f1f3f4;
+  color: #5f6368;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  outline: none;
+  height: 36px;
+  box-sizing: border-box;
 }
 
 #countdown-reset:hover {
   background-color: #e8eaed;
+  color: #202124;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 #countdown-custom-duration {
-  font-size: 14px;
-  font-family: 'Google Sans', Roboto, Arial, sans-serif;
-  padding: 10px;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #202124;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+  height: 36px;
+  box-sizing: border-box;
 }
 
 #countdown-custom-duration:focus {
   border-color: #1a73e8;
-  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.5);
-  outline: none;
+  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
 }

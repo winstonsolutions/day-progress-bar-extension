@@ -82,11 +82,6 @@ function createProgressBar() {
   const container = document.createElement("div");
   container.id = "day-progress-bar-container";
 
-  // Create progress bar
-  const bar = document.createElement("div");
-  bar.id = "day-progress-bar";
-  container.appendChild(bar);
-
   // Create time info
   const timeInfo = document.createElement("div");
   timeInfo.id = "day-progress-time-info";
@@ -107,6 +102,11 @@ function createProgressBar() {
   settingsBtn.title = "Work Hours Settings";
   settingsBtn.addEventListener("click", toggleSettingsPanel);
   container.appendChild(settingsBtn);
+
+  // Create progress bar - 放到后面创建，确保在UI元素上方显示
+  const bar = document.createElement("div");
+  bar.id = "day-progress-bar";
+  container.appendChild(bar);
 
   // Create settings panel (initially hidden)
   const settingsPanel = document.createElement("div");

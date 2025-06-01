@@ -10,5 +10,5 @@
       "css": ["style.css"]
     }
   ],
-  "permissions": ["storage"]
+  "permissions": ["storage", "notifications"]
 }

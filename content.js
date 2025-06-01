@@ -2,14 +2,23 @@
 let workStartTime = '08:00';
 let workEndTime = '21:00';
 
+// Countdown timer variables
+let countdownActive = false;
+let countdownDurationMinutes = 0;
+let countdownStartTimestamp = 0;
+let countdownIntervalId = null;
+
 // Load settings
 function loadSettings() {
-  chrome.storage.sync.get(['startTime', 'endTime'], function(result) {
+  chrome.storage.sync.get(['startTime', 'endTime', 'countdownDuration'], function(result) {
     if (result.startTime) {
       workStartTime = result.startTime;
     }
     if (result.endTime) {
       workEndTime = result.endTime;
+    }
+    if (result.countdownDuration) {
+      countdownDurationMinutes = result.countdownDuration;
     }
     updateProgressBar(); // Update after loading settings
   });
@@ -81,6 +90,11 @@ function createProgressBar() {
   bar.id = "day-progress-bar";
   container.appendChild(bar);
 
+  // Create countdown progress bar (on top of day progress bar)
+  const countdownBar = document.createElement("div");
+  countdownBar.id = "day-progress-countdown-bar";
+  container.appendChild(countdownBar);
+
   // Create settings button with clock icon
   const settingsBtn = document.createElement("div");
   settingsBtn.id = "day-progress-settings-btn";
@@ -91,6 +105,17 @@ function createProgressBar() {
   settingsBtn.title = "Work Hours Settings";
   settingsBtn.addEventListener("click", toggleSettingsPanel);
   container.appendChild(settingsBtn);
+
+  // Create countdown timer button
+  const countdownBtn = document.createElement("div");
+  countdownBtn.id = "day-progress-countdown-btn";
+  countdownBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"></circle>
+    <rect x="10" y="8" width="4" height="8"></rect>
+  </svg>`;
+  countdownBtn.title = "Set Countdown Timer";
+  countdownBtn.addEventListener("click", toggleCountdownPanel);
+  container.appendChild(countdownBtn);
 
   // 创建时间范围容器
   const timeRangeContainer = document.createElement("div");
@@ -150,6 +175,108 @@ function createProgressBar() {
   settingsPanel.appendChild(saveBtn);
 
   container.appendChild(settingsPanel);
+
+  // Create countdown panel (initially hidden)
+  const countdownPanel = document.createElement("div");
+  countdownPanel.id = "day-progress-countdown-panel";
+  countdownPanel.style.display = "none";
+
+  // Panel title
+  const countdownTitle = document.createElement("div");
+  countdownTitle.textContent = "Countdown Timer";
+  countdownTitle.style.fontSize = "16px";
+  countdownTitle.style.fontWeight = "500";
+  countdownTitle.style.marginBottom = "12px";
+  countdownTitle.style.color = "#202124";
+  countdownPanel.appendChild(countdownTitle);
+
+  // Quick duration buttons
+  const quickButtonsContainer = document.createElement("div");
+  quickButtonsContainer.style.display = "grid";
+  quickButtonsContainer.style.gridTemplateColumns = "repeat(3, 1fr)";
+  quickButtonsContainer.style.gap = "10px";
+  quickButtonsContainer.style.marginBottom = "16px";
+
+  // Reduced to only 3 preset options as requested
+  const durations = [5, 10, 25];
+  durations.forEach(duration => {
+    const button = document.createElement("button");
+    button.textContent = `${duration}m`;
+    button.className = "countdown-quick-button";
+    button.addEventListener("click", () => startCountdown(duration));
+    quickButtonsContainer.appendChild(button);
+  });
+
+  countdownPanel.appendChild(quickButtonsContainer);
+
+  // Custom duration input
+  const customDurationContainer = document.createElement("div");
+  customDurationContainer.style.display = "flex";
+  customDurationContainer.style.marginBottom = "16px";
+  customDurationContainer.style.alignItems = "center";
+
+  const customDurationInput = document.createElement("input");
+  customDurationInput.type = "number";
+  customDurationInput.id = "countdown-custom-duration";
+  customDurationInput.min = "1";
+  customDurationInput.max = "180";
+  customDurationInput.placeholder = "Custom";
+  customDurationInput.value = "1"; // Default value
+  customDurationInput.style.flex = "1";
+  customDurationInput.style.marginRight = "10px";
+  customDurationInput.style.padding = "8px 10px";
+  customDurationInput.style.borderRadius = "4px";
+  customDurationInput.style.border = "1px solid rgba(0, 0, 0, 0.15)";
+  customDurationInput.style.fontSize = "14px";
+
+  // Add keypress event listener for Enter key
+  customDurationInput.addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+      const duration = parseInt(customDurationInput.value);
+      if (!isNaN(duration) && duration > 0) {
+        startCountdown(duration);
+      }
+    }
+  });
+
+  const startCustomButton = document.createElement("button");
+  startCustomButton.textContent = "Start";
+  startCustomButton.id = "countdown-start-custom";
+  startCustomButton.style.padding = "8px 16px";
+  startCustomButton.addEventListener("click", () => {
+    const duration = parseInt(customDurationInput.value);
+    if (!isNaN(duration) && duration > 0) {
+      startCountdown(duration);
+    }
+  });
+
+  customDurationContainer.appendChild(customDurationInput);
+  customDurationContainer.appendChild(startCustomButton);
+  countdownPanel.appendChild(customDurationContainer);
+
+  // Control buttons for active countdown
+  const controlsContainer = document.createElement("div");
+  controlsContainer.style.display = "flex";
+  controlsContainer.style.justifyContent = "space-between";
+  controlsContainer.style.gap = "10px";
+
+  const stopButton = document.createElement("button");
+  stopButton.textContent = "Stop";
+  stopButton.id = "countdown-stop";
+  stopButton.style.flex = "1";
+  stopButton.addEventListener("click", stopCountdown);
+
+  const resetButton = document.createElement("button");
+  resetButton.textContent = "Reset";
+  resetButton.id = "countdown-reset";
+  resetButton.style.flex = "1";
+  resetButton.addEventListener("click", resetCountdown);
+
+  controlsContainer.appendChild(stopButton);
+  controlsContainer.appendChild(resetButton);
+  countdownPanel.appendChild(controlsContainer);
+
+  container.appendChild(countdownPanel);
 
   // Ensure the container is added to the document body
   document.body.insertBefore(container, document.body.firstChild);
@@ -329,6 +456,11 @@ function updateProgressBar() {
 
     timeInfo.textContent = `Total: ${totalHours} | Remaining: ${remainingTime}`;
 
+    // If countdown is active, update it as well
+    if (countdownActive) {
+      updateCountdownProgress();
+    }
+
     // 显示进度百分比和起止时间
     if (percentDisplay) {
       percentDisplay.textContent = `${Math.round(progress)}%`;
@@ -390,6 +522,12 @@ function startProgressUpdater() {
     // 如果页面未完全加载，稍等片刻
     setTimeout(startProgressUpdater, 500);
   }
+
+  // Request notification permission
+  if ("Notification" in window && Notification.permission !== "granted" &&
+      Notification.permission !== "denied") {
+    Notification.requestPermission();
+  }
 }
 
 // 监听页面变化，确保进度条始终存在
@@ -409,3 +547,254 @@ startProgressUpdater();
 
 // 立即执行一次更新确保即时显示
 setTimeout(updateProgressBar, 100);
+
+function toggleCountdownPanel() {
+  const panel = document.getElementById("day-progress-countdown-panel");
+  if (panel) {
+    if (panel.style.display === "none") {
+      panel.style.display = "block";
+
+      // Hide settings panel if open
+      const settingsPanel = document.getElementById("day-progress-settings-panel");
+      if (settingsPanel && settingsPanel.style.display !== "none") {
+        settingsPanel.style.display = "none";
+      }
+
+      // Add click outside listener to close panel when clicking elsewhere
+      setTimeout(() => {
+        document.addEventListener('click', closeCountdownPanelOnClickOutside);
+      }, 10);
+    } else {
+      panel.style.display = "none";
+      // Remove the click outside listener when panel is manually closed
+      document.removeEventListener('click', closeCountdownPanelOnClickOutside);
+    }
+  }
+}
+
+// Function to handle click outside the countdown panel
+function closeCountdownPanelOnClickOutside(event) {
+  const panel = document.getElementById("day-progress-countdown-panel");
+  const countdownBtn = document.getElementById("day-progress-countdown-btn");
+
+  // If click is outside the panel and not on the countdown button, close the panel
+  if (panel && countdownBtn &&
+      !panel.contains(event.target) &&
+      !countdownBtn.contains(event.target)) {
+    panel.style.display = "none";
+    document.removeEventListener('click', closeCountdownPanelOnClickOutside);
+  }
+}
+
+function startCountdown(durationMinutes) {
+  countdownDurationMinutes = durationMinutes;
+  countdownStartTimestamp = Date.now();
+  countdownActive = true;
+
+  // Save countdown duration in storage
+  chrome.storage.sync.set({
+    countdownDuration: durationMinutes
+  });
+
+  // Update UI
+  updateCountdownProgress();
+
+  // Hide panel after starting
+  const panel = document.getElementById("day-progress-countdown-panel");
+  if (panel) {
+    panel.style.display = "none";
+    document.removeEventListener('click', closeCountdownPanelOnClickOutside);
+  }
+
+  // Highlight countdown button
+  const countdownBtn = document.getElementById("day-progress-countdown-btn");
+  if (countdownBtn) {
+    countdownBtn.classList.add("active");
+  }
+
+  // Clear any existing interval and set new one
+  if (countdownIntervalId) {
+    clearInterval(countdownIntervalId);
+  }
+
+  // Update every second
+  countdownIntervalId = setInterval(() => {
+    if (countdownActive) {
+      updateCountdownProgress();
+    } else {
+      clearInterval(countdownIntervalId);
+    }
+  }, 1000);
+}
+
+function stopCountdown() {
+  countdownActive = false;
+  clearInterval(countdownIntervalId);
+
+  // Update UI
+  const countdownBar = document.getElementById("day-progress-countdown-bar");
+  if (countdownBar) {
+    countdownBar.style.width = "0%";
+  }
+
+  // Remove highlight from countdown button
+  const countdownBtn = document.getElementById("day-progress-countdown-btn");
+  if (countdownBtn) {
+    countdownBtn.classList.remove("active");
+  }
+
+  // Hide countdown info
+  const timeInfo = document.getElementById("day-progress-time-info");
+  if (timeInfo) {
+    // Remove countdown info if present
+    const countdownInfo = timeInfo.querySelector(".countdown-info");
+    if (countdownInfo) {
+      countdownInfo.remove();
+    }
+  }
+
+  // Hide panel
+  const panel = document.getElementById("day-progress-countdown-panel");
+  if (panel) {
+    panel.style.display = "none";
+  }
+}
+
+function resetCountdown() {
+  if (countdownActive) {
+    countdownStartTimestamp = Date.now();
+    updateCountdownProgress();
+  }
+}
+
+function updateCountdownProgress() {
+  if (!countdownActive) return;
+
+  const now = Date.now();
+  const elapsedMs = now - countdownStartTimestamp;
+  const totalDurationMs = countdownDurationMinutes * 60 * 1000;
+  const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
+
+  // Calculate remaining time in minutes and seconds
+  const remainingMinutes = Math.floor(remainingMs / 60000);
+  const remainingSeconds = Math.floor((remainingMs % 60000) / 1000);
+
+  // Calculate progress percentage (reversed for countdown)
+  const progressPercent = 100 - (remainingMs / totalDurationMs * 100);
+
+  // Update countdown bar width
+  const countdownBar = document.getElementById("day-progress-countdown-bar");
+  if (countdownBar) {
+    countdownBar.style.width = `${progressPercent}%`;
+
+    // Add a class if almost complete
+    if (progressPercent > 80) {
+      countdownBar.classList.add("almost-complete");
+    } else {
+      countdownBar.classList.remove("almost-complete");
+    }
+  }
+
+  // Update time info to include countdown
+  const timeInfo = document.getElementById("day-progress-time-info");
+  if (timeInfo) {
+    // Remove countdown info if present
+    let countdownInfo = timeInfo.querySelector(".countdown-info");
+    if (!countdownInfo) {
+      countdownInfo = document.createElement("span");
+      countdownInfo.className = "countdown-info";
+      timeInfo.appendChild(countdownInfo);
+    }
+
+    // Format and display remaining time
+    countdownInfo.textContent = ` | ⏱️ ${remainingMinutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+
+  // Check if countdown is complete
+  if (remainingMs === 0) {
+    countdownComplete();
+  }
+}
+
+function countdownComplete() {
+  countdownActive = false;
+  clearInterval(countdownIntervalId);
+
+  // Show notification
+  showNotification("Countdown Complete", "Your countdown timer has finished!");
+
+  // Play notification sound if available
+  try {
+    const audio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAKAAAJTAAXFxcXIiIiIiIuLi4uOjo6Ojo6RUVFRU9PT09PW1tbW2ZmZmZmcnJycnJ9fX19fYiIiIiTk5OTk56enp6pqampqbS0tLS0v7+/v7/Ly8vLy9bW1tbi4uLi4u3t7e3t+Pj4+Pj///////////8AAAA5TEFNRTMuOTlyAm4AAAAALgkAABSGJALDTgAARgAACUwX5BhkAAAAAAAAAAAAAAAAAAAA//vQxAAARhYlwhPIGAD6ELHNe4QAAAIC6SB8+1dyOGYkH7huABSkP59//9/ve48ODYqh2VgDAEg2PCAoPr////8ILCzvC48/RgYWloaDPcdFfXFUjkhHI4HjHagEGBULGHDgpGBgFzi3//AQR5g3CBiBg4mgMBDRQZAjCe0Vc7kOAFnEl0YaDYmAcDg//86ydCBeuDBgQ4QzJCEDxcPDZA0ML9/OUAMEwoGAsBQKFwA4GgTjAQBhkMFkKgDEIBYBpEGDYKAZgwaPiAoOhoAQH1///9u8UAzyRmFAsFAyDPzRMPFxojD0+cBwAMEQRXRFxCAAhMIFgfAMBQBUTCAYHQBMAQJMGQQPGQoDhyKBQIAH8j/////j34dzplRaHai5UXpwOB8HASOAw8KEgKAbBg5BwCA0YAgUgGBQTGBkJmBQFgAP/////////////9YQAgcLEhMmCYDmA4Ai5//4Y4D1yORDDlphZmASBYDGVeAhAgwCAMCABGAwAGAgAP////////+dA4CZgH8UfAiAUBAIzAHAMMAgCwEAWAA7GAwCjAJAExqSCO4nAErCoAQCAECgAv/7UMQCgFGKFz2sMRTorEdpNbKjsowYMGDBgziO88C4op/++ptL5xDC74AuJwjUboQglE4RqIMGDBgwYMGDBgwYMGDBgwYFQRBEEQRBAmDP//////14o04KBA//pBj//0g1MRtA0VDYCAYnA0EAiA41gAMLDaWVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
+    audio.play();
+  } catch (e) {
+    console.log("Could not play notification sound");
+  }
+
+  // Keep the countdown bar full for a moment
+  setTimeout(() => {
+    const countdownBar = document.getElementById("day-progress-countdown-bar");
+    if (countdownBar) {
+      countdownBar.classList.add("complete");
+
+      // Show completion message in the bar
+      const completionMessage = document.createElement("div");
+      completionMessage.id = "countdown-completion-message";
+      completionMessage.textContent = "Time's up!";
+      document.getElementById("day-progress-bar-container").appendChild(completionMessage);
+
+      // After showing complete state, remove it
+      setTimeout(() => {
+        countdownBar.style.width = "0%";
+        countdownBar.classList.remove("complete", "almost-complete");
+
+        // Remove highlight from countdown button
+        const countdownBtn = document.getElementById("day-progress-countdown-btn");
+        if (countdownBtn) {
+          countdownBtn.classList.remove("active");
+        }
+
+        // Remove countdown info
+        const timeInfo = document.getElementById("day-progress-time-info");
+        if (timeInfo) {
+          const countdownInfo = timeInfo.querySelector(".countdown-info");
+          if (countdownInfo) {
+            countdownInfo.remove();
+          }
+        }
+
+        // Remove completion message
+        const message = document.getElementById("countdown-completion-message");
+        if (message) {
+          message.classList.add("fade-out");
+          setTimeout(() => {
+            if (message.parentNode) {
+              message.parentNode.removeChild(message);
+            }
+          }, 500);
+        }
+      }, 3000);
+    }
+  }, 500);
+}
+
+function showNotification(title, message) {
+  // Check if browser supports notifications
+  if (!("Notification" in window)) {
+    console.log("This browser does not support desktop notifications");
+    return;
+  }
+
+  // Check if we have permission
+  if (Notification.permission === "granted") {
+    new Notification(title, { body: message });
+  }
+  // Otherwise, ask for permission
+  else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        new Notification(title, { body: message });
+      }
+    });
+  }
+}

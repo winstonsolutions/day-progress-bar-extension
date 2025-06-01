@@ -22,6 +22,86 @@
   transition: width 0.5s linear;
 }
 
+/* Countdown progress bar */
+#day-progress-countdown-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: rgba(234, 67, 53, 0.25); /* Google red */
+  transition: width 0.3s linear;
+  z-index: 1; /* Above the day progress bar */
+}
+
+#day-progress-countdown-bar.almost-complete {
+  background: rgba(234, 67, 53, 0.4); /* Brighter red when almost complete */
+  animation: pulse 1.5s infinite;
+}
+
+#day-progress-countdown-bar.complete {
+  background: rgba(234, 67, 53, 0.6); /* Full red when complete */
+  animation: flash 0.5s 3;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+@keyframes flash {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Completion message styling */
+#countdown-completion-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(234, 67, 53, 0.9);
+  color: white;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  z-index: 1000001;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  animation: pop-in 0.3s ease-out;
+}
+
+@keyframes pop-in {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+  }
+  90% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+#countdown-completion-message.fade-out {
+  animation: fade-out 0.5s forwards;
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+}
+
 #day-progress-time-range {
   position: absolute;
   left: 50%;
@@ -75,6 +155,11 @@
   border-radius: 3px;
 }
 
+.countdown-info {
+  color: #ea4335; /* Google red */
+  font-weight: 600;
+}
+
 #day-progress-settings-btn {
   position: absolute;
   left: 15px;
@@ -90,9 +175,30 @@
   border-radius: 3px;
 }
 
-#day-progress-settings-btn:hover {
+#day-progress-countdown-btn {
+  position: absolute;
+  left: 45px;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  pointer-events: auto;
+  z-index: 1000000;
+  color: #5f6368;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 2px;
+  border-radius: 3px;
+}
+
+#day-progress-settings-btn:hover,
+#day-progress-countdown-btn:hover {
   opacity: 1;
   color: #4285F4;
+}
+
+#day-progress-countdown-btn.active {
+  opacity: 1;
+  color: #ea4335; /* Google red */
 }
 
 #day-progress-settings-panel {
@@ -108,6 +214,23 @@
   display: flex;
   flex-direction: column;
   width: 210px;
+  pointer-events: auto;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+}
+
+#day-progress-countdown-panel {
+  position: absolute;
+  bottom: 28px;
+  left: 40px;
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  z-index: 1000000;
+  display: flex;
+  flex-direction: column;
+  width: 220px;
   pointer-events: auto;
   font-family: 'Google Sans', Roboto, Arial, sans-serif;
 }
@@ -172,4 +295,89 @@
 
 #day-progress-save-btn:active {
   background-color: #2b56b1;
+}
+
+/* Countdown buttons styling */
+.countdown-quick-button,
+#countdown-start-custom,
+#countdown-stop,
+#countdown-reset {
+  padding: 10px 0;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background-color: #fff;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  font-size: 14px;
+  color: #202124;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.countdown-quick-button {
+  background-color: #f8f9fa;
+  font-weight: 500;
+}
+
+.countdown-quick-button:hover {
+  background-color: #f1f3f4;
+  border-color: rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.countdown-quick-button:active {
+  background-color: #e8eaed;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) inset;
+}
+
+#countdown-start-custom {
+  background-color: #1a73e8;
+  color: white;
+  font-weight: 500;
+  border-color: #1a73e8;
+}
+
+#countdown-start-custom:hover {
+  background-color: #1765cc;
+  border-color: #1765cc;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+#countdown-start-custom:active {
+  background-color: #1566c5;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) inset;
+}
+
+#countdown-stop {
+  background-color: #ea4335;
+  color: white;
+  font-weight: 500;
+  border-color: #ea4335;
+}
+
+#countdown-stop:hover {
+  background-color: #d93025;
+  border-color: #d93025;
+}
+
+#countdown-reset {
+  background-color: #f1f3f4;
+}
+
+#countdown-reset:hover {
+  background-color: #e8eaed;
+}
+
+#countdown-custom-duration {
+  font-size: 14px;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+#countdown-custom-duration:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.5);
+  outline: none;
 }

@@ -280,14 +280,27 @@ function createProgressBar() {
   // Create countdown panel (initially hidden)
   const countdownPanel = document.createElement("div");
   countdownPanel.id = "day-progress-countdown-panel";
+  countdownPanel.style.position = "absolute";
+  countdownPanel.style.bottom = "28px";
+  countdownPanel.style.left = "40px";
+  countdownPanel.style.background = "white";
+  countdownPanel.style.padding = "16px";
+  countdownPanel.style.borderRadius = "8px";
+  countdownPanel.style.border = "1px solid rgba(0, 0, 0, 0.12)";
+  countdownPanel.style.boxShadow = "0 -2px 10px rgba(0, 0, 0, 0.1)";
+  countdownPanel.style.zIndex = "1000000";
   countdownPanel.style.display = "none";
+  countdownPanel.style.flexDirection = "column";
+  countdownPanel.style.width = "210px";
+  countdownPanel.style.pointerEvents = "auto";
+  countdownPanel.style.fontFamily = "'Google Sans', Roboto, Arial, sans-serif";
 
   // Panel title
   const countdownTitle = document.createElement("div");
   countdownTitle.textContent = "Countdown Timer";
   countdownTitle.style.fontSize = "16px";
   countdownTitle.style.fontWeight = "500";
-  countdownTitle.style.marginBottom = "12px";
+  countdownTitle.style.marginBottom = "10px";
   countdownTitle.style.color = "#202124";
   countdownTitle.style.display = "flex";
   countdownTitle.style.alignItems = "center";
@@ -334,8 +347,8 @@ function createProgressBar() {
   const quickButtonsContainer = document.createElement("div");
   quickButtonsContainer.style.display = "grid";
   quickButtonsContainer.style.gridTemplateColumns = "repeat(3, 1fr)";
-  quickButtonsContainer.style.gap = "10px";
-  quickButtonsContainer.style.marginBottom = "16px";
+  quickButtonsContainer.style.gap = "8px";
+  quickButtonsContainer.style.marginBottom = "8px";
   quickButtonsContainer.style.textAlign = "center";
 
   // Reduced to only 3 preset options as requested
@@ -345,6 +358,12 @@ function createProgressBar() {
     button.textContent = `${duration}m`;
     button.className = "countdown-quick-button";
     button.style.textAlign = "center";
+    button.style.padding = "6px 10px";
+    button.style.borderRadius = "4px";
+    button.style.border = "1px solid rgba(0, 0, 0, 0.15)";
+    button.style.fontSize = "13px";
+    button.style.backgroundColor = "#f1f3f4";
+    button.style.cursor = "pointer";
     button.addEventListener("click", () => startCountdown(duration));
     quickButtonsContainer.appendChild(button);
   });
@@ -355,29 +374,52 @@ function createProgressBar() {
   const allControlsContainer = document.createElement("div");
   allControlsContainer.style.display = "flex";
   allControlsContainer.style.flexDirection = "column";
-  allControlsContainer.style.gap = "12px";
+  allControlsContainer.style.gap = "8px";
 
-  // Create a grid layout with 2 columns for control buttons
-  const controlsGridContainer = document.createElement("div");
-  controlsGridContainer.style.display = "grid";
-  controlsGridContainer.style.gridTemplateColumns = "1fr 1fr";
-  controlsGridContainer.style.gap = "10px";
+  // Create a grid layout with 2 columns for custom input and start button
+  const inputRowContainer = document.createElement("div");
+  inputRowContainer.style.display = "grid";
+  inputRowContainer.style.gridTemplateColumns = "1fr 1fr";
+  inputRowContainer.style.gap = "8px";
+  inputRowContainer.style.marginBottom = "8px";
 
-  // Custom duration input - left column, first row
+  // Custom duration input with minute indicator
+  const inputWrapper = document.createElement("div");
+  inputWrapper.style.position = "relative";
+  inputWrapper.style.width = "100%";
+  inputWrapper.style.display = "flex";
+  inputWrapper.style.alignItems = "center";
+
   const customDurationInput = document.createElement("input");
   customDurationInput.type = "number";
   customDurationInput.id = "countdown-custom-duration";
   customDurationInput.min = "1";
   customDurationInput.max = "180";
-  customDurationInput.placeholder = "Custom";
+  customDurationInput.placeholder = "Minutes";
   customDurationInput.value = "1"; // Default value
   customDurationInput.style.width = "100%";
-  customDurationInput.style.padding = "8px 10px";
-  customDurationInput.style.height = "36px";
-  customDurationInput.style.boxSizing = "border-box";
+  customDurationInput.style.padding = "6px 10px";
   customDurationInput.style.borderRadius = "4px";
   customDurationInput.style.border = "1px solid rgba(0, 0, 0, 0.15)";
-  customDurationInput.style.fontSize = "14px";
+  customDurationInput.style.fontSize = "13px";
+  customDurationInput.style.fontFamily = "'Google Sans', Roboto, Arial, sans-serif";
+  customDurationInput.style.boxSizing = "border-box";
+  customDurationInput.style.textAlign = "center"; // 将数字居中
+  customDurationInput.style.paddingRight = "20px"; // 为后缀留出空间
+
+  // Add minute suffix
+  const minuteSuffix = document.createElement("span");
+  minuteSuffix.textContent = "m";
+  minuteSuffix.style.position = "absolute";
+  minuteSuffix.style.right = "10px";
+  minuteSuffix.style.top = "50%";
+  minuteSuffix.style.transform = "translateY(-50%)";
+  minuteSuffix.style.pointerEvents = "none";
+  minuteSuffix.style.color = "#5f6368";
+  minuteSuffix.style.fontSize = "13px";
+
+  inputWrapper.appendChild(customDurationInput);
+  inputWrapper.appendChild(minuteSuffix);
 
   // Add keypress event listener for Enter key
   customDurationInput.addEventListener('keypress', function(event) {
@@ -389,51 +431,71 @@ function createProgressBar() {
     }
   });
 
-  // Start button - right column, first row
-  const startCustomButton = document.createElement("button");
-  startCustomButton.textContent = "Start";
-  startCustomButton.id = "countdown-start-custom";
-  startCustomButton.style.padding = "8px 16px";
-  startCustomButton.style.width = "100%";
-  startCustomButton.style.height = "36px";
-  startCustomButton.style.boxSizing = "border-box";
-  startCustomButton.addEventListener("click", () => {
+  // Start button
+  const startButton = document.createElement("button");
+  startButton.textContent = "Start";
+  startButton.id = "countdown-start-custom";
+  startButton.style.padding = "6px 10px";
+  startButton.style.backgroundColor = "#4285F4";
+  startButton.style.color = "white";
+  startButton.style.border = "none";
+  startButton.style.borderRadius = "4px";
+  startButton.style.cursor = "pointer";
+  startButton.style.fontWeight = "500";
+  startButton.style.fontSize = "14px";
+  startButton.addEventListener("click", () => {
     const duration = parseInt(customDurationInput.value);
     if (!isNaN(duration) && duration > 0) {
       startCountdown(duration);
     }
   });
 
-  // Stop button - left column, second row
-  const stopButton = document.createElement("button");
-  stopButton.textContent = "Stop";
-  stopButton.id = "countdown-stop";
-  stopButton.style.width = "100%";
-  stopButton.style.padding = "8px 16px";
-  stopButton.style.height = "36px";
-  stopButton.style.boxSizing = "border-box";
-  stopButton.addEventListener("click", stopCountdown);
+  // Add input and start button to their container
+  inputRowContainer.appendChild(inputWrapper);
+  inputRowContainer.appendChild(startButton);
+  allControlsContainer.appendChild(inputRowContainer);
 
-  // Reset button - right column, second row
+  // Control buttons container - Reset and Stop buttons
+  const controlButtonsContainer = document.createElement("div");
+  controlButtonsContainer.style.display = "grid";
+  controlButtonsContainer.style.gridTemplateColumns = "1fr 1fr";
+  controlButtonsContainer.style.gap = "8px";
+
+  // Reset button - now on the left
   const resetButton = document.createElement("button");
   resetButton.textContent = "Reset";
   resetButton.id = "countdown-reset";
-  resetButton.style.width = "100%";
-  resetButton.style.padding = "8px 16px";
-  resetButton.style.height = "36px";
-  resetButton.style.boxSizing = "border-box";
+  resetButton.style.padding = "6px 10px";
+  resetButton.style.backgroundColor = "#f1f3f4";
+  resetButton.style.color = "#5f6368";
+  resetButton.style.border = "none";
+  resetButton.style.borderRadius = "4px";
+  resetButton.style.cursor = "pointer";
+  resetButton.style.fontWeight = "500";
+  resetButton.style.fontSize = "14px";
   resetButton.addEventListener("click", resetCountdown);
 
-  // Add elements to the grid
-  controlsGridContainer.appendChild(customDurationInput);
-  controlsGridContainer.appendChild(startCustomButton);
-  controlsGridContainer.appendChild(stopButton);
-  controlsGridContainer.appendChild(resetButton);
+  // Stop button - now on the right
+  const stopButton = document.createElement("button");
+  stopButton.textContent = "Stop";
+  stopButton.id = "countdown-stop";
+  stopButton.style.padding = "6px 10px";
+  stopButton.style.backgroundColor = "#ea4335";
+  stopButton.style.color = "white";
+  stopButton.style.border = "none";
+  stopButton.style.borderRadius = "4px";
+  stopButton.style.cursor = "pointer";
+  stopButton.style.fontWeight = "500";
+  stopButton.style.fontSize = "14px";
+  stopButton.addEventListener("click", stopCountdown);
 
-  // Add grid to main container
-  allControlsContainer.appendChild(controlsGridContainer);
+  // Add buttons to control container (Reset first, then Stop)
+  controlButtonsContainer.appendChild(resetButton);
+  controlButtonsContainer.appendChild(stopButton);
 
+  allControlsContainer.appendChild(controlButtonsContainer);
   countdownPanel.appendChild(allControlsContainer);
+
   container.appendChild(countdownPanel);
 
   // Ensure the container is added to the document body

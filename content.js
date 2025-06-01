@@ -163,9 +163,30 @@ function toggleSettingsPanel() {
   if (panel) {
     if (panel.style.display === "none") {
       panel.style.display = "block";
+
+      // Add click outside listener to close panel when clicking elsewhere
+      setTimeout(() => {
+        document.addEventListener('click', closeSettingsPanelOnClickOutside);
+      }, 10);
     } else {
       panel.style.display = "none";
+      // Remove the click outside listener when panel is manually closed
+      document.removeEventListener('click', closeSettingsPanelOnClickOutside);
     }
+  }
+}
+
+// Function to handle click outside the settings panel
+function closeSettingsPanelOnClickOutside(event) {
+  const panel = document.getElementById("day-progress-settings-panel");
+  const settingsBtn = document.getElementById("day-progress-settings-btn");
+
+  // If click is outside the panel and not on the settings button, close the panel
+  if (panel && settingsBtn &&
+      !panel.contains(event.target) &&
+      !settingsBtn.contains(event.target)) {
+    panel.style.display = "none";
+    document.removeEventListener('click', closeSettingsPanelOnClickOutside);
   }
 }
 
@@ -184,6 +205,9 @@ function saveSettings() {
       workStartTime = newStartTime;
       workEndTime = newEndTime;
       updateProgressBar();
+
+      // Remove the click outside listener
+      document.removeEventListener('click', closeSettingsPanelOnClickOutside);
 
       // Show saved message
       const panel = document.getElementById("day-progress-settings-panel");

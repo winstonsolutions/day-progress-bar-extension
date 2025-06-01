@@ -40,7 +40,6 @@ function createTimeInputGroup(labelText, inputId, value) {
   input.value = value;
   input.style.width = '100%';
   input.style.padding = '6px 10px';
-  input.style.paddingRight = '26px';
   input.style.borderRadius = '4px';
   input.style.border = '1px solid rgba(0, 0, 0, 0.15)';
   input.style.fontSize = '13px';
@@ -48,22 +47,17 @@ function createTimeInputGroup(labelText, inputId, value) {
   input.style.outline = 'none';
   input.style.boxSizing = 'border-box';
 
-  // Clock icon SVG - smaller size
-  const clockIcon = document.createElement('div');
-  clockIcon.style.position = 'absolute';
-  clockIcon.style.right = '8px';
-  clockIcon.style.pointerEvents = 'none';
-  clockIcon.style.color = '#5f6368';
-  clockIcon.style.display = 'flex';
-  clockIcon.style.alignItems = 'center';
-  clockIcon.style.height = '100%';
-  clockIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="10"></circle>
-    <polyline points="12 6 12 12 16 14"></polyline>
-  </svg>`;
+  // Add keypress event listener for Enter key
+  if (inputId === "day-progress-end-time") {
+    input.addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveSettings();
+      }
+    });
+  }
 
   inputWrapper.appendChild(input);
-  inputWrapper.appendChild(clockIcon);
 
   container.appendChild(label);
   container.appendChild(inputWrapper);

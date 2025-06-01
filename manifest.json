@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Google Calendar Time Progress Bar",
+  "version": "1.0",
+  "description": "Displays a live time progress bar on Google Calendar.",
+  "content_scripts": [
+    {
+      "matches": ["https://calendar.google.com/*"],
+      "js": ["content.js"],
+      "css": ["style.css"]
+    }
+  ],
+  "permissions": ["storage"]
+}

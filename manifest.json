@@ -10,5 +10,21 @@
       "css": ["style.css"]
     }
   ],
-  "permissions": ["storage"]
+  "permissions": ["storage", "identity", "notifications", "contextMenus"],
+  "optional_permissions": [],
+  "host_permissions": ["https://*.googleapis.com/"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Work Hours Progress Bar"
+  },
+  "oauth2": {
+    "client_id": "${966163827588-v9k3ht1k0a9acbsgt26n831lda9he8qm.apps.googleusercontent.com}",
+    "scopes": ["https://www.googleapis.com/auth/userinfo.email"]
+  },
+  "web_accessible_resources": [{
+    "resources": ["subscription.html", "subscription.js"],
+    "matches": ["<all_urls>"]
+  }]
 }

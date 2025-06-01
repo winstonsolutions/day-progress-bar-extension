@@ -8,6 +8,9 @@ let countdownDurationMinutes = 0;
 let countdownStartTimestamp = 0;
 let countdownIntervalId = null;
 
+// Subscription status
+let isCountdownFeatureEnabled = false;
+
 // Load settings
 function loadSettings() {
   chrome.storage.sync.get(['startTime', 'endTime', 'countdownDuration'], function(result) {
@@ -22,6 +25,100 @@ function loadSettings() {
     }
     updateProgressBar(); // Update after loading settings
   });
+
+  // Check subscription status for countdown feature
+  checkCountdownFeatureStatus();
+}
+
+// Check if countdown feature is enabled
+function checkCountdownFeatureStatus() {
+  chrome.runtime.sendMessage(
+    { action: 'checkFeature', feature: 'countdown' },
+    function(response) {
+      if (response) {
+        isCountdownFeatureEnabled = response.enabled;
+        updateCountdownButtonVisibility();
+      }
+    }
+  );
+}
+
+// Update countdown button visibility based on subscription status
+function updateCountdownButtonVisibility() {
+  const countdownBtn = document.getElementById("day-progress-countdown-btn");
+  if (countdownBtn) {
+    if (isCountdownFeatureEnabled) {
+      countdownBtn.style.display = "block";
+    } else {
+      countdownBtn.style.display = "none";
+    }
+  }
+}
+
+// Show subscription upgrade prompt
+function showSubscriptionPrompt() {
+  const container = document.createElement("div");
+  container.id = "day-progress-subscription-prompt";
+  container.style.position = "fixed";
+  container.style.bottom = "50px";
+  container.style.left = "50%";
+  container.style.transform = "translateX(-50%)";
+  container.style.backgroundColor = "rgba(255, 255, 255, 0.95)";
+  container.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.2)";
+  container.style.borderRadius = "8px";
+  container.style.padding = "16px";
+  container.style.maxWidth = "350px";
+  container.style.zIndex = "2147483647";
+  container.style.fontFamily = "'Google Sans', Roboto, Arial, sans-serif";
+
+  const title = document.createElement("h3");
+  title.textContent = "Premium Feature";
+  title.style.margin = "0 0 8px 0";
+  title.style.color = "#1a73e8";
+  title.style.fontSize = "16px";
+  container.appendChild(title);
+
+  const message = document.createElement("p");
+  message.textContent = "The countdown timer is a premium feature. Try it free for 30 days, then $1.99/month.";
+  message.style.margin = "0 0 16px 0";
+  message.style.fontSize = "14px";
+  message.style.color = "#202124";
+  container.appendChild(message);
+
+  const buttonGroup = document.createElement("div");
+  buttonGroup.style.display = "flex";
+  buttonGroup.style.gap = "8px";
+
+  const closeButton = document.createElement("button");
+  closeButton.textContent = "Not Now";
+  closeButton.style.padding = "8px 16px";
+  closeButton.style.backgroundColor = "#f1f3f4";
+  closeButton.style.border = "none";
+  closeButton.style.borderRadius = "4px";
+  closeButton.style.cursor = "pointer";
+  closeButton.style.flexGrow = "1";
+  closeButton.addEventListener("click", () => {
+    container.remove();
+  });
+  buttonGroup.appendChild(closeButton);
+
+  const trialButton = document.createElement("button");
+  trialButton.textContent = "Start Free Trial";
+  trialButton.style.padding = "8px 16px";
+  trialButton.style.backgroundColor = "#1a73e8";
+  trialButton.style.color = "#fff";
+  trialButton.style.border = "none";
+  trialButton.style.borderRadius = "4px";
+  trialButton.style.cursor = "pointer";
+  trialButton.style.flexGrow = "1";
+  trialButton.addEventListener("click", () => {
+    chrome.runtime.sendMessage({ action: 'openSubscription' });
+    container.remove();
+  });
+  buttonGroup.appendChild(trialButton);
+
+  container.appendChild(buttonGroup);
+  document.body.appendChild(container);
 }
 
 function createTimeInputGroup(labelText, inputId, value) {
@@ -116,7 +213,7 @@ function createProgressBar() {
     <path d="M16.5 7.5l-1.5-1.5"></path>
   </svg>`;
   countdownBtn.title = "Set Countdown Timer";
-  countdownBtn.addEventListener("click", toggleCountdownPanel);
+  countdownBtn.addEventListener("click", handleCountdownClick);
   container.appendChild(countdownBtn);
 
   // 创建时间范围容器
@@ -303,6 +400,18 @@ function createProgressBar() {
 
   // Debug log to check if element is created
   console.log("Progress bar container created:", container);
+
+  // Update countdown button visibility based on subscription status
+  updateCountdownButtonVisibility();
+}
+
+// Handle countdown button click with subscription check
+function handleCountdownClick() {
+  if (isCountdownFeatureEnabled) {
+    toggleCountdownPanel();
+  } else {
+    showSubscriptionPrompt();
+  }
 }
 
 function toggleSettingsPanel() {
@@ -601,6 +710,11 @@ function closeCountdownPanelOnClickOutside(event) {
 }
 
 function startCountdown(durationMinutes) {
+  if (!isCountdownFeatureEnabled) {
+    showSubscriptionPrompt();
+    return;
+  }
+
   countdownDurationMinutes = durationMinutes;
   countdownStartTimestamp = Date.now();
   countdownActive = true;
@@ -780,3 +894,10 @@ function countdownComplete() {
     }
   }, 500);
 }
+
+// Load settings and start progress updater when the content script runs
+loadSettings();
+startProgressUpdater();
+
+// Check subscription status periodically (every hour)
+setInterval(checkCountdownFeatureStatus, 60 * 60 * 1000);

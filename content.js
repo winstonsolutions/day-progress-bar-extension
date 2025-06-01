@@ -15,6 +15,62 @@ function loadSettings() {
   });
 }
 
+function createTimeInputGroup(labelText, inputId, value) {
+  const container = document.createElement('div');
+  container.className = 'time-input-group';
+  container.style.marginBottom = '12px';
+
+  const label = document.createElement('label');
+  label.textContent = labelText;
+  label.setAttribute('for', inputId);
+  label.style.display = 'block';
+  label.style.marginBottom = '6px';
+  label.style.fontSize = '12px';
+  label.style.color = '#5f6368';
+  label.style.fontWeight = '500';
+
+  const inputWrapper = document.createElement('div');
+  inputWrapper.style.position = 'relative';
+  inputWrapper.style.display = 'flex';
+  inputWrapper.style.alignItems = 'center';
+
+  const input = document.createElement('input');
+  input.type = 'time';
+  input.id = inputId;
+  input.value = value;
+  input.style.width = '100%';
+  input.style.padding = '6px 10px';
+  input.style.paddingRight = '26px';
+  input.style.borderRadius = '4px';
+  input.style.border = '1px solid rgba(0, 0, 0, 0.15)';
+  input.style.fontSize = '13px';
+  input.style.fontFamily = '\'Google Sans\', Roboto, Arial, sans-serif';
+  input.style.outline = 'none';
+  input.style.boxSizing = 'border-box';
+
+  // Clock icon SVG - smaller size
+  const clockIcon = document.createElement('div');
+  clockIcon.style.position = 'absolute';
+  clockIcon.style.right = '8px';
+  clockIcon.style.pointerEvents = 'none';
+  clockIcon.style.color = '#5f6368';
+  clockIcon.style.display = 'flex';
+  clockIcon.style.alignItems = 'center';
+  clockIcon.style.height = '100%';
+  clockIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"></circle>
+    <polyline points="12 6 12 12 16 14"></polyline>
+  </svg>`;
+
+  inputWrapper.appendChild(input);
+  inputWrapper.appendChild(clockIcon);
+
+  container.appendChild(label);
+  container.appendChild(inputWrapper);
+
+  return {container, input};
+}
+
 function createProgressBar() {
   // 检查并移除任何已有的进度条
   const existingContainer = document.getElementById("day-progress-bar-container");
@@ -39,14 +95,6 @@ function createProgressBar() {
   // Create progress percentage indicator
   const progressPercent = document.createElement("div");
   progressPercent.id = "day-progress-percentage";
-  progressPercent.style.position = "absolute";
-  progressPercent.style.left = "50%";
-  progressPercent.style.top = "6px";
-  progressPercent.style.transform = "translateX(-50%)";
-  progressPercent.style.fontSize = "11px";
-  progressPercent.style.color = "#333";
-  progressPercent.style.fontFamily = "Arial, sans-serif";
-  progressPercent.style.fontWeight = "bold";
   container.appendChild(progressPercent);
 
   // Create settings button with Material Design icon
@@ -68,38 +116,22 @@ function createProgressBar() {
   // Panel title
   const panelTitle = document.createElement("div");
   panelTitle.textContent = "Work Hours";
-  panelTitle.style.fontSize = "14px";
+  panelTitle.style.fontSize = "16px";
   panelTitle.style.fontWeight = "500";
-  panelTitle.style.marginBottom = "10px";
+  panelTitle.style.marginBottom = "14px";
   panelTitle.style.color = "#202124";
   settingsPanel.appendChild(panelTitle);
 
-  // Start time input
-  const startLabel = document.createElement("label");
-  startLabel.textContent = "Start time";
-  startLabel.setAttribute("for", "day-progress-start-time");
-  settingsPanel.appendChild(startLabel);
+  // Create time input components
+  const startTimeGroup = createTimeInputGroup("Start time", "day-progress-start-time", workStartTime);
+  const endTimeGroup = createTimeInputGroup("End time", "day-progress-end-time", workEndTime);
 
-  const startInput = document.createElement("input");
-  startInput.type = "time";
-  startInput.id = "day-progress-start-time";
-  startInput.value = workStartTime;
-  settingsPanel.appendChild(startInput);
-
-  // End time input
-  const endLabel = document.createElement("label");
-  endLabel.textContent = "End time";
-  endLabel.setAttribute("for", "day-progress-end-time");
-  settingsPanel.appendChild(endLabel);
-
-  const endInput = document.createElement("input");
-  endInput.type = "time";
-  endInput.id = "day-progress-end-time";
-  endInput.value = workEndTime;
-  settingsPanel.appendChild(endInput);
+  settingsPanel.appendChild(startTimeGroup.container);
+  settingsPanel.appendChild(endTimeGroup.container);
 
   // Save button
   const saveBtn = document.createElement("button");
+  saveBtn.id = "day-progress-save-btn";
   saveBtn.textContent = "Save";
   saveBtn.addEventListener("click", saveSettings);
   settingsPanel.appendChild(saveBtn);
@@ -145,11 +177,15 @@ function saveSettings() {
       const savedMsgContainer = document.createElement("div");
       savedMsgContainer.style.display = "flex";
       savedMsgContainer.style.alignItems = "center";
-      savedMsgContainer.style.marginTop = "10px";
+      savedMsgContainer.style.justifyContent = "center";
+      savedMsgContainer.style.marginTop = "12px";
+      savedMsgContainer.style.padding = "6px 0";
+      savedMsgContainer.style.backgroundColor = "rgba(66, 133, 244, 0.1)";
+      savedMsgContainer.style.borderRadius = "4px";
 
       // Checkmark icon
       const checkIcon = document.createElement("span");
-      checkIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4285F4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      checkIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4285F4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>`;
       savedMsgContainer.appendChild(checkIcon);
@@ -158,7 +194,7 @@ function saveSettings() {
       savedMsg.textContent = "Settings saved";
       savedMsg.style.color = "#4285F4";
       savedMsg.style.marginLeft = "5px";
-      savedMsg.style.fontSize = "13px";
+      savedMsg.style.fontSize = "12px";
       savedMsgContainer.appendChild(savedMsg);
 
       panel.appendChild(savedMsgContainer);

@@ -73,36 +73,51 @@
   z-index: 1000000;
   display: flex;
   flex-direction: column;
-  width: 200px;
+  width: 210px;
   pointer-events: auto;
   font-family: 'Google Sans', Roboto, Arial, sans-serif;
 }
 
-#day-progress-settings-panel label {
-  margin-top: 5px;
-  margin-bottom: 4px;
+.time-input-group {
+  margin-bottom: 16px;
+}
+
+.time-input-group label {
+  display: block;
+  margin-bottom: 6px;
   font-size: 12px;
   color: #5f6368;
   font-weight: 500;
 }
 
-#day-progress-settings-panel input {
-  margin-bottom: 12px;
-  padding: 8px;
-  font-size: 13px;
+.time-input-group input[type="time"] {
+  width: 100%;
+  padding: 6px 10px;
+  padding-right: 30px;
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.15);
-  outline: none;
+  font-size: 13px;
   font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  outline: none;
+  box-sizing: border-box;
+  color: #202124;
+  background-color: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
 }
 
-#day-progress-settings-panel input:focus {
+.time-input-group input[type="time"]:focus {
   border-color: #4285F4;
   box-shadow: 0 0 0 1px rgba(66, 133, 244, 0.5);
 }
 
-#day-progress-settings-panel button {
-  margin-top: 10px;
+/* 隐藏浏览器默认的时间选择器图标 */
+.time-input-group input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+#day-progress-save-btn {
+  margin-top: 6px;
   padding: 8px 16px;
   background-color: #4285F4;
   color: white;
@@ -113,8 +128,15 @@
   font-weight: 500;
   transition: background-color 0.2s;
   font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  width: auto;
+  align-self: flex-end;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-#day-progress-settings-panel button:hover {
+#day-progress-save-btn:hover {
   background-color: #3367d6;
+}
+
+#day-progress-save-btn:active {
+  background-color: #2b56b1;
 }

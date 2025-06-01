@@ -522,12 +522,6 @@ function startProgressUpdater() {
     // 如果页面未完全加载，稍等片刻
     setTimeout(startProgressUpdater, 500);
   }
-
-  // Request notification permission
-  if ("Notification" in window && Notification.permission !== "granted" &&
-      Notification.permission !== "denied") {
-    Notification.requestPermission();
-  }
 }
 
 // 监听页面变化，确保进度条始终存在
@@ -720,17 +714,6 @@ function countdownComplete() {
   countdownActive = false;
   clearInterval(countdownIntervalId);
 
-  // Show notification
-  showNotification("Countdown Complete", "Your countdown timer has finished!");
-
-  // Play notification sound if available
-  try {
-    const audio = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAKAAAJTAAXFxcXIiIiIiIuLi4uOjo6Ojo6RUVFRU9PT09PW1tbW2ZmZmZmcnJycnJ9fX19fYiIiIiTk5OTk56enp6pqampqbS0tLS0v7+/v7/Ly8vLy9bW1tbi4uLi4u3t7e3t+Pj4+Pj///////////8AAAA5TEFNRTMuOTlyAm4AAAAALgkAABSGJALDTgAARgAACUwX5BhkAAAAAAAAAAAAAAAAAAAA//vQxAAARhYlwhPIGAD6ELHNe4QAAAIC6SB8+1dyOGYkH7huABSkP59//9/ve48ODYqh2VgDAEg2PCAoPr////8ILCzvC48/RgYWloaDPcdFfXFUjkhHI4HjHagEGBULGHDgpGBgFzi3//AQR5g3CBiBg4mgMBDRQZAjCe0Vc7kOAFnEl0YaDYmAcDg//86ydCBeuDBgQ4QzJCEDxcPDZA0ML9/OUAMEwoGAsBQKFwA4GgTjAQBhkMFkKgDEIBYBpEGDYKAZgwaPiAoOhoAQH1///9u8UAzyRmFAsFAyDPzRMPFxojD0+cBwAMEQRXRFxCAAhMIFgfAMBQBUTCAYHQBMAQJMGQQPGQoDhyKBQIAH8j/////j34dzplRaHai5UXpwOB8HASOAw8KEgKAbBg5BwCA0YAgUgGBQTGBkJmBQFgAP/////////////9YQAgcLEhMmCYDmA4Ai5//4Y4D1yORDDlphZmASBYDGVeAhAgwCAMCABGAwAGAgAP////////+dA4CZgH8UfAiAUBAIzAHAMMAgCwEAWAA7GAwCjAJAExqSCO4nAErCoAQCAECgAv/7UMQCgFGKFz2sMRTorEdpNbKjsowYMGDBgziO88C4op/++ptL5xDC74AuJwjUboQglE4RqIMGDBgwYMGDBgwYMGDBgwYFQRBEEQRBAmDP//////14o04KBA//pBj//0g1MRtA0VDYCAYnA0EAiA41gAMLDaWVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
-    audio.play();
-  } catch (e) {
-    console.log("Could not play notification sound");
-  }
-
   // Keep the countdown bar full for a moment
   setTimeout(() => {
     const countdownBar = document.getElementById("day-progress-countdown-bar");
@@ -776,25 +759,4 @@ function countdownComplete() {
       }, 3000);
     }
   }, 500);
-}
-
-function showNotification(title, message) {
-  // Check if browser supports notifications
-  if (!("Notification" in window)) {
-    console.log("This browser does not support desktop notifications");
-    return;
-  }
-
-  // Check if we have permission
-  if (Notification.permission === "granted") {
-    new Notification(title, { body: message });
-  }
-  // Otherwise, ask for permission
-  else if (Notification.permission !== "denied") {
-    Notification.requestPermission().then(permission => {
-      if (permission === "granted") {
-        new Notification(title, { body: message });
-      }
-    });
-  }
 }

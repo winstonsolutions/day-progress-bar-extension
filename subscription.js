@@ -241,6 +241,8 @@ class SubscriptionManager {
     console.log('更新UI...');
     const statusContainer = document.getElementById('status-container');
     const subscribeButton = document.getElementById('subscribe-button');
+    const licenseKeyInput = document.getElementById('license-key-input');
+    const licenseStatus = document.getElementById('license-status');
 
     // 检查DOM元素是否存在
     if (!statusContainer || !subscribeButton) {
@@ -248,80 +250,90 @@ class SubscriptionManager {
       return;
     }
 
-    // 确保获取有效的订阅状态
-    let status = STATUS.FREE;
-    try {
-      status = this.checkSubscriptionStatus();
-    } catch (error) {
-      console.error('检查订阅状态时出错:', error);
-      // 出错时使用默认的FREE状态
-    }
-    console.log('用于UI更新的状态:', status);
-
-    // Update status message
+    // 清空状态容器
     statusContainer.innerHTML = '';
 
+    // 获取当前订阅状态
+    const status = this.checkSubscriptionStatus();
+    console.log('UI更新 - 当前状态:', status);
+
+    // 创建状态消息元素
     const statusMessage = document.createElement('div');
     statusMessage.className = 'status-message';
 
     switch (status) {
       case STATUS.ACTIVE:
-        statusMessage.className += ' status-active';
-        let nextBillingText = '下一个结算日期未知';
-        // 安全地访问nextBillingDate
-        if (this.subscriptionData && this.subscriptionData.nextBillingDate) {
-          nextBillingText = this.formatDate(this.subscriptionData.nextBillingDate);
-        }
+        statusMessage.classList.add('status-active');
         statusMessage.innerHTML = `
-          <strong>Active Subscription</strong><br>
-          Your premium subscription is active. Next billing date: ${nextBillingText}
+          <strong>Active Subscription</strong>
+          <p style="margin: 5px 0 0;">Your premium features are active.</p>
         `;
+
+        // 如果有许可证密钥，显示它
+        if (this.subscriptionData.licenseKey) {
+          const expirationDate = new Date(this.subscriptionData.expirationDate);
+          const now = new Date();
+          const daysLeft = this.getDaysLeft(this.subscriptionData.expirationDate);
+
+          statusMessage.innerHTML += `
+            <p style="margin: 5px 0 0;">
+              License: ${this.subscriptionData.licenseKey.substr(0, 8)}...${this.subscriptionData.licenseKey.substr(-8)}
+            </p>
+            <p style="margin: 5px 0 0;">
+              Valid until: ${this.formatDate(this.subscriptionData.expirationDate)} (${daysLeft} days left)
+            </p>
+          `;
+
+          // 如果有许可证输入框，则预填充并禁用
+          if (licenseKeyInput) {
+            licenseKeyInput.value = this.subscriptionData.licenseKey;
+            licenseKeyInput.disabled = true;
+            licenseStatus.textContent = 'License active';
+            licenseStatus.style.color = '#188038';
+            licenseStatus.style.display = 'block';
+          }
+        }
+
         subscribeButton.textContent = 'Cancel Subscription';
         break;
 
       case STATUS.TRIAL:
-        let daysLeft = 0;
-        // 安全地计算剩余天数
-        if (this.subscriptionData && this.subscriptionData.trialEnds) {
-          try {
-            daysLeft = this.getDaysLeft(this.subscriptionData.trialEnds);
-          } catch (error) {
-            console.error('计算剩余天数时出错:', error);
-          }
-        }
-        statusMessage.className += ' status-trial';
+        // 计算试用期剩余天数
+        const daysLeft = this.getDaysLeft(this.subscriptionData.trialEnds);
+
+        statusMessage.classList.add('status-trial');
         statusMessage.innerHTML = `
-          <strong>Trial Active</strong><br>
-          Your 30-day free trial is active. ${daysLeft} days remaining.
+          <strong>Trial Active</strong>
+          <p style="margin: 5px 0 0;">
+            You have ${daysLeft} days left in your trial.
+            Subscribe now to keep access to premium features.
+          </p>
         `;
         subscribeButton.textContent = 'Subscribe Now';
         break;
 
       case STATUS.EXPIRED:
-        statusMessage.className += ' status-expired';
+        statusMessage.classList.add('status-expired');
         statusMessage.innerHTML = `
-          <strong>Trial Expired</strong><br>
-          Your free trial has ended. Subscribe now to continue using premium features.
+          <strong>Trial Expired</strong>
+          <p style="margin: 5px 0 0;">
+            Your trial period has ended.
+            Subscribe now to regain access to premium features.
+          </p>
         `;
         subscribeButton.textContent = 'Subscribe Now';
         break;
 
       default: // FREE
         subscribeButton.textContent = 'Start Free Trial';
-        const trialInfo = document.getElementById('trial-info');
-        if (trialInfo) {
-          trialInfo.style.display = 'block';
-        }
         break;
     }
 
+    // 只有当有状态消息时才添加到容器
     if (status !== STATUS.FREE) {
       statusContainer.appendChild(statusMessage);
-      const trialInfo = document.getElementById('trial-info');
-      if (trialInfo) {
-        trialInfo.style.display = 'none';
-      }
     }
+
     console.log('UI更新完成');
   }
 
@@ -367,8 +379,9 @@ class SubscriptionManager {
   }
 
   setupEventListeners() {
-    const subscribeButton = document.getElementById('subscribe-button');
+    console.log('设置事件监听器...');
 
+    const subscribeButton = document.getElementById('subscribe-button');
     if (subscribeButton) {
       console.log('找到订阅按钮，添加点击事件监听器');
 
@@ -406,6 +419,82 @@ class SubscriptionManager {
     } else {
       console.error('找不到订阅按钮元素！');
     }
+
+    // License key functionality
+    const saveLicenseButton = document.getElementById('save-license-button');
+    const licenseKeyInput = document.getElementById('license-key-input');
+    const licenseStatus = document.getElementById('license-status');
+    const getLicenseButton = document.getElementById('get-license-button');
+
+    if (saveLicenseButton && licenseKeyInput && licenseStatus) {
+      saveLicenseButton.addEventListener('click', () => {
+        const licenseKey = licenseKeyInput.value.trim();
+        if (!licenseKey) {
+          this.showLicenseError('Please enter a license key');
+          return;
+        }
+
+        // Validate license key (in a real app, this would verify with a server)
+        if (this.validateLicenseKey(licenseKey)) {
+          this.activateLicense(licenseKey);
+          licenseStatus.style.color = '#188038'; // Success green color
+          licenseStatus.textContent = 'License activated successfully!';
+          licenseStatus.style.display = 'block';
+        } else {
+          this.showLicenseError('Invalid license key!');
+        }
+      });
+    }
+
+    if (getLicenseButton) {
+      getLicenseButton.addEventListener('click', () => {
+        // In a real app, this would redirect to a purchase page
+        alert('In a production app, this would redirect to a purchase page where users can buy a license key.');
+      });
+    }
+  }
+
+  showLicenseError(message) {
+    const licenseStatus = document.getElementById('license-status');
+    if (licenseStatus) {
+      licenseStatus.style.color = '#d93025'; // Error red color
+      licenseStatus.textContent = message;
+      licenseStatus.style.display = 'block';
+    }
+  }
+
+  validateLicenseKey(licenseKey) {
+    // In a real app, this would verify the license with a server
+    // For demo purposes, we'll use a simple format check
+    // A real implementation would include cryptographic verification
+
+    // Simple check: must be at least 20 characters and contain letters and numbers
+    const isValidFormat = licenseKey.length >= 20 &&
+                          /[A-Z]/.test(licenseKey) &&
+                          /[0-9]/.test(licenseKey) &&
+                          /[-]/.test(licenseKey);
+
+    return isValidFormat;
+  }
+
+  async activateLicense(licenseKey) {
+    // Set subscription to active with the license key
+    const now = new Date();
+    const nextYear = new Date(now);
+    nextYear.setFullYear(now.getFullYear() + 1);
+
+    this.subscriptionData = {
+      status: STATUS.ACTIVE,
+      features: {
+        countdown: true
+      },
+      licenseKey: licenseKey,
+      activationDate: now.toISOString(),
+      expirationDate: nextYear.toISOString()
+    };
+
+    await this.saveSubscriptionData();
+    this.updateUI();
   }
 }
 

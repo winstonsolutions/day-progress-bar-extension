@@ -138,6 +138,39 @@
     <div id="trial-info" style="font-size: 14px; color: #5f6368; text-align: center; margin-top: 20px;">
       Try the countdown feature free for 30 days, then $1.99/month
     </div>
+
+    <!-- License Key Input Module -->
+    <div class="plan" style="margin-top: 30px;">
+      <div class="plan-name">License Key</div>
+      <p style="font-size: 14px; color: #5f6368; margin-bottom: 15px;">
+        Enter your license key below to activate the pro features.
+      </p>
+      <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <input
+          type="text"
+          id="license-key-input"
+          placeholder="Enter your license key"
+          style="flex-grow: 1; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px;"
+        >
+        <button
+          id="save-license-button"
+          class="cta-button"
+          style="width: auto; background-color: #1a73e8;"
+        >
+          Save License Key
+        </button>
+      </div>
+      <div id="license-status" style="font-size: 14px; color: #d93025; margin-top: 10px; display: none;"></div>
+      <div id="no-license-section" style="font-size: 14px; color: #5f6368; margin-top: 15px;">
+        Don't have a license key yet?
+        <button
+          id="get-license-button"
+          style="background: none; border: none; color: #1a73e8; cursor: pointer; font-size: 14px; text-decoration: underline; padding: 0; margin-left: 5px;"
+        >
+          Get one now
+        </button>
+      </div>
+    </div>
   </div>
 
   <script src="subscription.js"></script>

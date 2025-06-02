@@ -610,12 +610,17 @@ function parseTimeToMinutes(timeString) {
 }
 
 function formatHoursMinutes(minutes) {
-  if (!minutes || minutes < 0) {
+  // 确保minutes是有效的数字
+  if (isNaN(minutes) || minutes === null || minutes === undefined || minutes < 0) {
     console.error("Invalid minutes:", minutes);
     return "0h";
   }
+
+  // 将minutes转换为整数
+  minutes = Math.floor(minutes);
+
   const hours = Math.floor(minutes / 60);
-  const mins = Math.floor(minutes % 60);
+  const mins = minutes % 60;
   return `${hours}h${mins > 0 ? ` ${mins}m` : ''}`;
 }
 
@@ -643,7 +648,7 @@ function updateProgressBar() {
   console.log("分钟表示 - 当前时间:", currentTimeInMinutes, "分钟");
 
   // 总工作时间（分钟）
-  const totalWorkMinutes = endTimeInMinutes - startTimeInMinutes;
+  const totalWorkMinutes = Math.max(0, endTimeInMinutes - startTimeInMinutes);
   console.log("总工作时间:", totalWorkMinutes, "分钟");
 
   let progress = 0;
@@ -663,7 +668,7 @@ function updateProgressBar() {
   } else {
     // 工作时间中
     const elapsedWorkMinutes = currentTimeInMinutes - startTimeInMinutes;
-    progress = (elapsedWorkMinutes / totalWorkMinutes) * 100;
+    progress = totalWorkMinutes > 0 ? (elapsedWorkMinutes / totalWorkMinutes) * 100 : 0;
     remainingMinutes = totalWorkMinutes - elapsedWorkMinutes;
     console.log("工作已进行:", elapsedWorkMinutes, "分钟, 进度:", progress.toFixed(2) + "%");
     console.log("剩余工作时间:", remainingMinutes, "分钟");

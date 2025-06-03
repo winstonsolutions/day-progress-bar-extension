@@ -71,21 +71,12 @@ async function handleCheckout(event) {
   } catch (error) {
     console.error('结账会话创建失败:', error);
 
-    // API调用失败时回退到模拟Stripe页面
-    const fallbackToMock = confirm(
-      '连接到支付服务器失败。是否要使用测试模式继续？\n\n' +
-      '错误信息: ' + error.message
-    );
+    // 显示错误消息给用户
+    alert('支付服务连接失败，请稍后再试。\n\n错误信息: ' + error.message);
 
-    if (fallbackToMock) {
-      const successUrl = chrome.runtime.getURL('subscription.html?payment_success=true');
-      const mockStripeUrl = chrome.runtime.getURL(`mock-stripe.html?email=${encodeURIComponent(email)}&success_url=${encodeURIComponent(successUrl)}`);
-      window.location.href = mockStripeUrl;
-    } else {
-      // 恢复按钮状态
-      checkoutButton.disabled = false;
-      checkoutButton.textContent = originalText;
-    }
+    // 恢复按钮状态
+    checkoutButton.disabled = false;
+    checkoutButton.textContent = originalText;
   }
 }
 

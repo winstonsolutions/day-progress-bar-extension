@@ -17,20 +17,16 @@ async function createCheckoutSession(priceInUSD, email = null) {
   const cancelUrl = chrome.runtime.getURL('subscription.html?payment_cancelled=true');
 
   try {
-    // 在沙盒模式下使用测试API
-    const isTestMode = true; // 暂时设置为测试模式
-
     // 调试信息
-    console.log('发送请求到:', `${API_BASE_URL}/api/create-checkout-session`);
+    console.log('发送请求到:', `${API_BASE_URL}/api/stripe/create-checkout-session`);
     console.log('请求参数:', {
       priceInUSD,
       email,
       successUrl,
-      cancelUrl,
-      testmode: isTestMode
+      cancelUrl
     });
 
-    const response = await fetch(`${API_BASE_URL}/api/create-checkout-session`, {
+    const response = await fetch(`${API_BASE_URL}/api/stripe/create-checkout-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -39,8 +35,7 @@ async function createCheckoutSession(priceInUSD, email = null) {
         priceInUSD,
         email,
         successUrl,
-        cancelUrl,
-        testmode: isTestMode // 添加测试模式标志
+        cancelUrl
       })
     });
 

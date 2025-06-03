@@ -35,9 +35,9 @@ function loadSettings() {
       const hideBtn = document.getElementById("day-progress-hide-btn");
       if (hideBtn) {
         hideBtn.textContent = "Show";
-        // 确保按钮样式一致
-        hideBtn.style.backgroundColor = "#4285F4";
-        hideBtn.style.color = "white";
+        // 确保按钮样式一致 - 使用灰色样式
+        hideBtn.style.backgroundColor = "#f1f3f4";
+        hideBtn.style.color = "#5f6368";
         hideBtn.style.lineHeight = "36px";
         hideBtn.style.padding = "0";
       }
@@ -294,35 +294,35 @@ function createProgressBar() {
   buttonContainer.style.marginTop = "10px";
 
   // 创建通用按钮样式函数，确保两个按钮完全一致
-  function createStyledButton(id, text, clickHandler) {
+  function createStyledButton(id, text, clickHandler, isSecondary = false) {
     const button = document.createElement("button");
     button.id = id;
     button.textContent = text;
     button.style.flex = "1";
-    button.style.backgroundColor = "#4285F4";  // Google蓝色
-    button.style.color = "white";
+    button.style.backgroundColor = isSecondary ? "#f1f3f4" : "#4285F4"; // 蓝色或灰色
+    button.style.color = isSecondary ? "#5f6368" : "white"; // 灰色文本或白色文本
     button.style.border = "none";
     button.style.borderRadius = "4px";
     button.style.cursor = "pointer";
     button.style.fontWeight = "500";
     button.style.fontSize = "14px";
     button.style.boxSizing = "border-box";
-    button.style.height = "36px";
-    button.style.lineHeight = "36px"; // 和按钮高度一致，确保文字垂直居中
-    button.style.padding = "0";       // 移除padding，用行高控制垂直居中
+    button.style.height = "36px"; // 固定相同高度
+    button.style.lineHeight = "36px";
+    button.style.padding = "0";
     button.style.textAlign = "center";
     button.style.verticalAlign = "middle";
-    button.style.display = "block";   // 改用block更简单地处理垂直居中
+    button.style.display = "block";
     button.addEventListener("click", clickHandler);
     return button;
   }
 
-  // Save button
-  const saveBtn = createStyledButton("day-progress-save-btn", "Save", saveSettings);
+  // Save button - 蓝色主按钮
+  const saveBtn = createStyledButton("day-progress-save-btn", "Save", saveSettings, false);
   buttonContainer.appendChild(saveBtn);
 
-  // Hide button
-  const hideBtn = createStyledButton("day-progress-hide-btn", "Hide", toggleProgressBarVisibility);
+  // Hide button - 灰色次要按钮，类似Reset按钮样式
+  const hideBtn = createStyledButton("day-progress-hide-btn", "Hide", toggleProgressBarVisibility, true);
   buttonContainer.appendChild(hideBtn);
 
   settingsPanel.appendChild(buttonContainer);
@@ -1076,9 +1076,9 @@ function toggleProgressBarVisibility() {
     const hideBtn = document.getElementById("day-progress-hide-btn");
     if (hideBtn) {
       hideBtn.textContent = isHidden ? "Hide" : "Show";
-      // 确保按钮样式不变
-      hideBtn.style.backgroundColor = "#4285F4";
-      hideBtn.style.color = "white";
+      // 确保按钮样式不变 - 使用灰色样式
+      hideBtn.style.backgroundColor = "#f1f3f4";
+      hideBtn.style.color = "#5f6368";
       hideBtn.style.lineHeight = "36px";
       hideBtn.style.padding = "0";
     }

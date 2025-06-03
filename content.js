@@ -561,6 +561,13 @@ function createProgressBar() {
 
   // Update countdown button visibility based on subscription status
   updateCountdownButtonVisibility();
+
+  // 检查是否应该隐藏进度条
+  chrome.storage.sync.get(['dayProgressBarHidden'], function(result) {
+    if (result.dayProgressBarHidden) {
+      container.style.display = "none";
+    }
+  });
 }
 
 // Handle countdown button click with subscription check
@@ -1066,11 +1073,11 @@ setInterval(checkCountdownFeatureStatus, 60 * 60 * 1000);
 /**
  * 切换进度条的可见性
  */
-function toggleProgressBarVisibility() {
+function toggleProgressBarVisibility(forceHidden) {
   const progressBarContainer = document.getElementById("day-progress-bar-container");
   if (progressBarContainer) {
-    // 检查当前是否隐藏
-    const isHidden = progressBarContainer.style.display === "none";
+    // 检查当前是否隐藏，或使用强制值
+    const isHidden = forceHidden !== undefined ? !forceHidden : progressBarContainer.style.display === "none";
 
     // 保存隐藏状态到存储
     chrome.storage.sync.set({ "dayProgressBarHidden": !isHidden });
@@ -1100,3 +1107,21 @@ function toggleProgressBarVisibility() {
     }
   }
 }
+
+// 在文件顶部添加消息监听器
+chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+  if (message.action === 'toggleProgressBarVisibility') {
+    // 直接使用消息中传递的隐藏状态
+    toggleProgressBarVisibility(message.hidden);
+  } else if (message.action === 'openSettingsPanel') {
+    const panel = document.getElementById("day-progress-settings-panel");
+    if (panel) {
+      panel.style.display = "block";
+      // 添加点击外部关闭逻辑
+      setTimeout(() => {
+        document.addEventListener('click', closeSettingsPanelOnClickOutside);
+      }, 10);
+    }
+  }
+  return true; // 保持消息通道开放以异步响应
+});

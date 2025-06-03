@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Day Progress Bar</title>
+  <style>
+    body {
+      width: 200px;
+      padding: 15px;
+      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+    }
+    h1 {
+      font-size: 16px;
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #202124;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 8px 0;
+      background-color: #f1f3f4;
+      color: #5f6368;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #e3e5e8;
+    }
+    .settings-link {
+      display: block;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #1a73e8;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .settings-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Day Progress Bar</h1>
+  <button id="toggle-btn">Show Progress Bar</button>
+  <a class="settings-link" id="settings-link">Configure Work Hours</a>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -13,15 +13,29 @@ let isCountdownFeatureEnabled = false;
 
 // Load settings
 function loadSettings() {
-  chrome.storage.sync.get(['startTime', 'endTime', 'countdownDuration'], function(result) {
+  chrome.storage.sync.get(['startTime', 'endTime', 'countdownDuration', 'dayProgressBarHidden'], function(result) {
     if (result.startTime) {
       workStartTime = result.startTime;
+      document.getElementById("day-progress-start-time").value = result.startTime;
     }
     if (result.endTime) {
       workEndTime = result.endTime;
+      document.getElementById("day-progress-end-time").value = result.endTime;
     }
     if (result.countdownDuration) {
       countdownDurationMinutes = result.countdownDuration;
+    }
+    if (result.dayProgressBarHidden) {
+      const progressBarContainer = document.getElementById("day-progress-bar-container");
+      if (progressBarContainer) {
+        progressBarContainer.style.display = "none";
+      }
+
+      // 更新按钮文本，如果按钮已经存在
+      const hideBtn = document.getElementById("day-progress-hide-btn");
+      if (hideBtn) {
+        hideBtn.textContent = "Show Bar";
+      }
     }
     updateProgressBar(); // Update after loading settings
   });
@@ -268,12 +282,32 @@ function createProgressBar() {
   settingsPanel.appendChild(startTimeGroup.container);
   settingsPanel.appendChild(endTimeGroup.container);
 
+  // Button container for Save and Hide buttons
+  const buttonContainer = document.createElement("div");
+  buttonContainer.style.display = "flex";
+  buttonContainer.style.gap = "10px";
+  buttonContainer.style.marginTop = "10px";
+
   // Save button
   const saveBtn = document.createElement("button");
   saveBtn.id = "day-progress-save-btn";
   saveBtn.textContent = "Save";
   saveBtn.addEventListener("click", saveSettings);
-  settingsPanel.appendChild(saveBtn);
+  saveBtn.style.flex = "1";
+  buttonContainer.appendChild(saveBtn);
+
+  // Hide button
+  const hideBtn = document.createElement("button");
+  hideBtn.id = "day-progress-hide-btn";
+  hideBtn.textContent = "Hide Bar";
+  hideBtn.style.backgroundColor = "#f1f3f4";
+  hideBtn.style.color = "#202124";
+  hideBtn.style.border = "1px solid rgba(0, 0, 0, 0.15)";
+  hideBtn.style.flex = "1";
+  hideBtn.addEventListener("click", toggleProgressBarVisibility);
+  buttonContainer.appendChild(hideBtn);
+
+  settingsPanel.appendChild(buttonContainer);
 
   container.appendChild(settingsPanel);
 
@@ -1007,3 +1041,33 @@ startProgressUpdater();
 
 // Check subscription status periodically (every hour)
 setInterval(checkCountdownFeatureStatus, 60 * 60 * 1000);
+
+/**
+ * 切换进度条的可见性
+ */
+function toggleProgressBarVisibility() {
+  const progressBarContainer = document.getElementById("day-progress-bar-container");
+  if (progressBarContainer) {
+    // 检查当前是否隐藏
+    const isHidden = progressBarContainer.style.display === "none";
+
+    // 保存隐藏状态到存储
+    chrome.storage.sync.set({ "dayProgressBarHidden": !isHidden });
+
+    // 更新按钮文本
+    const hideBtn = document.getElementById("day-progress-hide-btn");
+    if (hideBtn) {
+      hideBtn.textContent = isHidden ? "Hide Bar" : "Show Bar";
+    }
+
+    // 切换可见性
+    progressBarContainer.style.display = isHidden ? "flex" : "none";
+
+    // 关闭设置面板
+    const settingsPanel = document.getElementById("day-progress-settings-panel");
+    if (settingsPanel) {
+      settingsPanel.style.display = "none";
+      document.removeEventListener('click', closeSettingsPanelOnClickOutside);
+    }
+  }
+}

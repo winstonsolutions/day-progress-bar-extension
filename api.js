@@ -17,26 +17,72 @@ async function createCheckoutSession(priceInUSD, email = null, paymentMethod = '
   const successUrl = chrome.runtime.getURL('subscription.html?payment_success=true');
   const cancelUrl = chrome.runtime.getURL('subscription.html?payment_cancelled=true');
 
-  const response = await fetch(`${API_BASE_URL}/api/create-checkout-session`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  try {
+    // 在沙盒模式下使用测试API
+    const isTestMode = true; // 暂时设置为测试模式
+
+    // 调试信息
+    console.log('发送请求到:', `${API_BASE_URL}/api/create-checkout-session`);
+    console.log('请求参数:', {
       priceInUSD,
       email,
       paymentMethod,
       successUrl,
-      cancelUrl
-    })
-  });
+      cancelUrl,
+      testmode: isTestMode
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Failed to create checkout session');
+    const response = await fetch(`${API_BASE_URL}/api/create-checkout-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        priceInUSD,
+        email,
+        paymentMethod,
+        successUrl,
+        cancelUrl,
+        testmode: isTestMode // 添加测试模式标志
+      })
+    });
+
+    // 检查响应状态
+    if (!response.ok) {
+      // 尝试获取响应内容
+      let errorText = '';
+      try {
+        // 尝试读取响应文本
+        errorText = await response.text();
+
+        // 尝试解析为JSON
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || `API错误 (${response.status}): ${response.statusText}`);
+        } catch (jsonError) {
+          // 如果不是JSON，显示文本前100个字符
+          console.error('API返回非JSON响应:', errorText.substring(0, 100) + '...');
+          throw new Error(`API返回格式错误 (${response.status}): 不是有效的JSON响应`);
+        }
+      } catch (textError) {
+        console.error('无法读取API响应内容:', textError);
+        throw new Error(`API错误 (${response.status}): ${response.statusText}`);
+      }
+    }
+
+    // 尝试解析JSON响应
+    try {
+      const data = await response.json();
+      console.log('API响应成功:', data);
+      return data;
+    } catch (jsonError) {
+      console.error('解析API响应JSON失败:', jsonError);
+      throw new Error('无法解析API响应为JSON格式');
+    }
+  } catch (error) {
+    console.error('创建结账会话失败:', error);
+    throw error;
   }
-
-  return await response.json();
 }
 
 /**

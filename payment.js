@@ -187,6 +187,17 @@ async function handlePayment(event) {
   const email = emailInput.value.trim();
   let selectedPaymentMethod = getSelectedPaymentMethod();
 
+  // 开发测试模式 - 设置为true使用模拟的Stripe页面
+  const useMockStripe = true;
+
+  if (useMockStripe) {
+    // 使用模拟的Stripe页面（无需后端API）
+    const successUrl = chrome.runtime.getURL('subscription.html?payment_success=true');
+    const mockStripeUrl = chrome.runtime.getURL(`mock-stripe.html?email=${encodeURIComponent(email)}&success_url=${encodeURIComponent(successUrl)}`);
+    window.location.href = mockStripeUrl;
+    return;
+  }
+
   try {
     // 创建Stripe结账会话，并传递邮箱和支付方式
     const { sessionUrl } = await createCheckoutSession(
@@ -200,13 +211,24 @@ async function handlePayment(event) {
   } catch (error) {
     console.error('支付初始化失败:', error);
 
-    // 显示错误信息
-    const errorMessage = error.message || '支付初始化失败，请稍后再试';
-    alert(errorMessage);
+    // API调用失败时回退到模拟Stripe页面
+    const fallbackToMock = confirm(
+      '连接到支付服务器失败。是否要使用测试模式继续？\n\n' +
+      '错误信息: ' + error.message
+    );
 
-    // 恢复按钮状态
-    payButton.disabled = false;
-    payButton.textContent = originalText;
+    if (fallbackToMock) {
+      const successUrl = chrome.runtime.getURL('subscription.html?payment_success=true');
+      const mockStripeUrl = chrome.runtime.getURL(`mock-stripe.html?email=${encodeURIComponent(email)}&success_url=${encodeURIComponent(successUrl)}`);
+      window.location.href = mockStripeUrl;
+    } else {
+      // 显示错误信息
+      alert('支付流程已取消');
+
+      // 恢复按钮状态
+      payButton.disabled = false;
+      payButton.textContent = originalText;
+    }
   }
 }
 

@@ -171,28 +171,31 @@
         </button>
       </div>
 
-      <!-- 请求许可证密钥表单 -->
-      <div id="request-license-form" style="margin-top: 15px; display: none;">
-        <div style="border-top: 1px solid #dadce0; padding-top: 15px; margin-top: 15px;">
-          <p style="font-size: 14px; color: #5f6368; margin-bottom: 15px;">
-            Enter your email to request a license key. We'll send it to you once your payment is processed.
-          </p>
-          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <input
-              type="email"
-              id="license-email-input"
-              placeholder="Enter your email address"
-              style="flex-grow: 1; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px;"
-            >
+      <!-- 简单的邮箱输入对话框，在点击Get one now后显示 -->
+      <div id="quick-email-dialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border-radius: 8px; width: 300px;">
+          <h3 style="margin-top: 0;">Enter your email</h3>
+          <p style="font-size: 14px; color: #5f6368;">We'll send your license key to this email after payment.</p>
+          <input
+            type="email"
+            id="quick-email-input"
+            placeholder="Your email address"
+            style="width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; margin: 10px 0; box-sizing: border-box;"
+          >
+          <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
             <button
-              id="request-license-button"
-              class="cta-button"
-              style="width: auto; background-color: #1a73e8;"
+              id="cancel-quick-email"
+              style="padding: 8px 16px; border: none; background: none; cursor: pointer; border-radius: 4px;"
             >
-              Request License
+              Cancel
+            </button>
+            <button
+              id="proceed-with-email"
+              style="padding: 8px 16px; border: none; background-color: #1a73e8; color: white; cursor: pointer; border-radius: 4px;"
+            >
+              Proceed to Payment
             </button>
           </div>
-          <div id="request-license-status" style="font-size: 14px; margin-top: 10px; display: none;"></div>
         </div>
       </div>
     </div>

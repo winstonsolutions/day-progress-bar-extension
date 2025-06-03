@@ -9,9 +9,10 @@ const API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app
 /**
  * 创建Stripe结账会话
  * @param {number} priceInUSD - 订阅的价格（USD）
+ * @param {string} [email] - 可选的用户邮箱，用于发送license key
  * @returns {Promise<{sessionUrl: string}>} - Stripe结账会话URL
  */
-async function createCheckoutSession(priceInUSD) {
+async function createCheckoutSession(priceInUSD, email = null) {
   const successUrl = chrome.runtime.getURL('subscription.html?payment_success=true');
   const cancelUrl = chrome.runtime.getURL('subscription.html?payment_cancelled=true');
 
@@ -22,6 +23,7 @@ async function createCheckoutSession(priceInUSD) {
     },
     body: JSON.stringify({
       priceInUSD,
+      email,
       successUrl,
       cancelUrl
     })

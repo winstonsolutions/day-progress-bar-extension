@@ -15,10 +15,20 @@ const STATUS = {
 
 // 实际的支付API实现，与Stripe集成
 const PaymentAPI = {
-  initiatePayment: async function(priceInUSD) {
+  initiatePayment: async function(priceInUSD, email = null) {
     try {
-      // 使用API模块创建Stripe结账会话
-      const { sessionUrl } = await createCheckoutSession(priceInUSD);
+      // 如果没有提供邮箱，尝试通过对话框获取
+      if (!email) {
+        email = prompt('Please enter your email to receive the license key after payment:', '');
+
+        // 如果用户取消或没有输入邮箱，则终止支付流程
+        if (!email || !this.isValidEmail(email)) {
+          throw new Error('A valid email is required to process payment and send your license key');
+        }
+      }
+
+      // 使用API模块创建Stripe结账会话，传递邮箱参数
+      const { sessionUrl } = await createCheckoutSession(priceInUSD, email);
 
       // 打开Stripe结账页面
       window.open(sessionUrl, '_blank');
@@ -26,7 +36,8 @@ const PaymentAPI = {
       return {
         success: true,
         transactionId: 'pending_stripe_confirmation',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        email: email
       };
     } catch (error) {
       console.error('Payment initiation failed:', error);
@@ -42,6 +53,12 @@ const PaymentAPI = {
       console.error('Payment verification failed:', error);
       throw error;
     }
+  },
+
+  // 邮箱验证函数
+  isValidEmail: function(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   }
 };
 
@@ -212,7 +229,8 @@ class SubscriptionManager {
         },
         subscriptionStarted: now.toISOString(),
         nextBillingDate: nextBillingDate.toISOString(),
-        latestTransaction: paymentResult
+        latestTransaction: paymentResult,
+        email: paymentResult.email
       };
 
       await this.saveSubscriptionData();
@@ -507,14 +525,43 @@ class SubscriptionManager {
     }
 
     // 显示/隐藏许可证请求表单
-    if (showRequestFormButton && requestLicenseForm) {
+    if (showRequestFormButton) {
       showRequestFormButton.addEventListener('click', () => {
-        if (requestLicenseForm.style.display === 'none' || !requestLicenseForm.style.display) {
-          requestLicenseForm.style.display = 'block';
-          showRequestFormButton.textContent = 'Hide form';
-        } else {
-          requestLicenseForm.style.display = 'none';
-          showRequestFormButton.textContent = 'Get one now';
+        // 显示邮箱输入对话框
+        document.getElementById('quick-email-dialog').style.display = 'block';
+      });
+    }
+
+    // 处理邮箱对话框
+    const quickEmailDialog = document.getElementById('quick-email-dialog');
+    const quickEmailInput = document.getElementById('quick-email-input');
+    const cancelEmailButton = document.getElementById('cancel-quick-email');
+    const proceedWithEmailButton = document.getElementById('proceed-with-email');
+
+    if (cancelEmailButton) {
+      cancelEmailButton.addEventListener('click', () => {
+        quickEmailDialog.style.display = 'none';
+      });
+    }
+
+    if (proceedWithEmailButton && quickEmailInput) {
+      proceedWithEmailButton.addEventListener('click', async () => {
+        const email = quickEmailInput.value.trim();
+
+        if (!email || !this.isValidEmail(email)) {
+          alert('Please enter a valid email address');
+          return;
+        }
+
+        // 关闭对话框
+        quickEmailDialog.style.display = 'none';
+
+        // 直接使用邮箱发起支付
+        try {
+          await PaymentAPI.initiatePayment(MONTHLY_PRICE, email);
+        } catch (error) {
+          console.error('Failed to open payment page:', error);
+          alert('Failed to open payment page: ' + error.message);
         }
       });
     }

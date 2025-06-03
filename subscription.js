@@ -1,4 +1,5 @@
 // Subscription management for Work Hours Progress Bar extension
+import { API_BASE_URL, createCheckoutSession, verifyLicense, requestLicenseKey, verifyPaymentStatus } from './api.js';
 
 // Constants
 const MONTHLY_PRICE = 1.99;
@@ -12,21 +13,34 @@ const STATUS = {
   FREE: 'free'
 };
 
-// Mock Google payment API - In production, this would use actual Google payment APIs
+// 实际的支付API实现，与Stripe集成
 const PaymentAPI = {
   initiatePayment: async function(priceInUSD) {
-    // In a real implementation, this would open Google's payment dialog
-    // For demo purposes, we'll use a simple confirm dialog
-    const confirmed = confirm(`Confirm payment of $${priceInUSD}/month for Premium features?`);
+    try {
+      // 使用API模块创建Stripe结账会话
+      const { sessionUrl } = await createCheckoutSession(priceInUSD);
 
-    if (confirmed) {
+      // 打开Stripe结账页面
+      window.open(sessionUrl, '_blank');
+
       return {
         success: true,
-        transactionId: 'tr_' + Math.random().toString(36).substr(2, 9),
+        transactionId: 'pending_stripe_confirmation',
         timestamp: new Date().toISOString()
       };
-    } else {
-      throw new Error('Payment cancelled by user');
+    } catch (error) {
+      console.error('Payment initiation failed:', error);
+      throw new Error('Payment initiation failed: ' + error.message);
+    }
+  },
+
+  // 验证支付状态
+  verifyPaymentStatus: async function(transactionId) {
+    try {
+      return await verifyPaymentStatus(transactionId);
+    } catch (error) {
+      console.error('Payment verification failed:', error);
+      throw error;
     }
   }
 };
@@ -47,10 +61,44 @@ class SubscriptionManager {
     this.loadSubscriptionData().then(() => {
       this.updateUI();
       this.setupEventListeners();
+
+      // 检查URL参数，处理支付成功返回
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('payment_success') === 'true') {
+        this.handlePaymentSuccess();
+      } else if (urlParams.get('payment_cancelled') === 'true') {
+        this.handlePaymentCancelled();
+      }
+
       console.log('订阅管理器初始化完成');
     }).catch(error => {
       console.error('加载订阅数据时出错:', error);
     });
+  }
+
+  // 处理支付成功的回调
+  async handlePaymentSuccess() {
+    // 显示支付处理中的消息
+    const statusContainer = document.getElementById('status-container');
+    statusContainer.innerHTML = `<div class="status-message status-active">
+      Payment received! Processing your subscription...
+    </div>`;
+
+    // 等待几秒以确保后端处理了webhook
+    setTimeout(() => {
+      // 刷新订阅状态
+      this.loadSubscriptionData().then(() => {
+        this.updateUI();
+      });
+    }, 3000);
+  }
+
+  // 处理支付取消的回调
+  handlePaymentCancelled() {
+    const statusContainer = document.getElementById('status-container');
+    statusContainer.innerHTML = `<div class="status-message status-expired">
+      Payment was cancelled. You can try again when ready.
+    </div>`;
   }
 
   async loadSubscriptionData() {
@@ -424,32 +472,83 @@ class SubscriptionManager {
     const saveLicenseButton = document.getElementById('save-license-button');
     const licenseKeyInput = document.getElementById('license-key-input');
     const licenseStatus = document.getElementById('license-status');
-    const getLicenseButton = document.getElementById('get-license-button');
+    const showRequestFormButton = document.getElementById('show-request-form-button');
+    const requestLicenseForm = document.getElementById('request-license-form');
+    const licenseEmailInput = document.getElementById('license-email-input');
+    const requestLicenseButton = document.getElementById('request-license-button');
+    const requestLicenseStatus = document.getElementById('request-license-status');
 
     if (saveLicenseButton && licenseKeyInput && licenseStatus) {
-      saveLicenseButton.addEventListener('click', () => {
+      saveLicenseButton.addEventListener('click', async () => {
         const licenseKey = licenseKeyInput.value.trim();
         if (!licenseKey) {
           this.showLicenseError('Please enter a license key');
           return;
         }
 
-        // Validate license key (in a real app, this would verify with a server)
-        if (this.validateLicenseKey(licenseKey)) {
-          this.activateLicense(licenseKey);
-          licenseStatus.style.color = '#188038'; // Success green color
-          licenseStatus.textContent = 'License activated successfully!';
-          licenseStatus.style.display = 'block';
-        } else {
-          this.showLicenseError('Invalid license key!');
+        licenseStatus.style.display = 'block';
+        licenseStatus.textContent = 'Verifying license...';
+        licenseStatus.style.color = '#1a73e8'; // Info blue color
+
+        try {
+          // 调用后端验证许可证
+          const result = await this.activateLicense(licenseKey);
+
+          if (result.success) {
+            licenseStatus.style.color = '#188038'; // Success green color
+            licenseStatus.textContent = result.message || 'License activated successfully!';
+          } else {
+            this.showLicenseError(result.message || 'Invalid license key!');
+          }
+        } catch (error) {
+          this.showLicenseError(error.message || 'Failed to verify license');
         }
       });
     }
 
-    if (getLicenseButton) {
-      getLicenseButton.addEventListener('click', () => {
-        // In a real app, this would redirect to a purchase page
-        alert('In a production app, this would redirect to a purchase page where users can buy a license key.');
+    // 显示/隐藏许可证请求表单
+    if (showRequestFormButton && requestLicenseForm) {
+      showRequestFormButton.addEventListener('click', () => {
+        if (requestLicenseForm.style.display === 'none' || !requestLicenseForm.style.display) {
+          requestLicenseForm.style.display = 'block';
+          showRequestFormButton.textContent = 'Hide form';
+        } else {
+          requestLicenseForm.style.display = 'none';
+          showRequestFormButton.textContent = 'Get one now';
+        }
+      });
+    }
+
+    // 请求许可证按钮逻辑
+    if (requestLicenseButton && licenseEmailInput && requestLicenseStatus) {
+      requestLicenseButton.addEventListener('click', async () => {
+        const email = licenseEmailInput.value.trim();
+
+        if (!email || !this.isValidEmail(email)) {
+          requestLicenseStatus.textContent = 'Please enter a valid email address';
+          requestLicenseStatus.style.color = '#d93025'; // Error red color
+          requestLicenseStatus.style.display = 'block';
+          return;
+        }
+
+        requestLicenseStatus.textContent = 'Requesting license...';
+        requestLicenseStatus.style.color = '#1a73e8'; // Info blue color
+        requestLicenseStatus.style.display = 'block';
+
+        try {
+          const result = await this.requestLicenseKey(email);
+
+          if (result.success) {
+            requestLicenseStatus.textContent = result.message || 'License key request sent! Check your email.';
+            requestLicenseStatus.style.color = '#188038'; // Success green color
+          } else {
+            requestLicenseStatus.textContent = result.message || 'Failed to request license key';
+            requestLicenseStatus.style.color = '#d93025'; // Error red color
+          }
+        } catch (error) {
+          requestLicenseStatus.textContent = error.message || 'An error occurred';
+          requestLicenseStatus.style.color = '#d93025'; // Error red color
+        }
       });
     }
   }
@@ -478,23 +577,51 @@ class SubscriptionManager {
   }
 
   async activateLicense(licenseKey) {
-    // Set subscription to active with the license key
-    const now = new Date();
-    const nextYear = new Date(now);
-    nextYear.setFullYear(now.getFullYear() + 1);
+    try {
+      // 调用API模块验证许可证密钥
+      const licenseData = await verifyLicense(licenseKey);
 
-    this.subscriptionData = {
-      status: STATUS.ACTIVE,
-      features: {
-        countdown: true
-      },
-      licenseKey: licenseKey,
-      activationDate: now.toISOString(),
-      expirationDate: nextYear.toISOString()
-    };
+      if (licenseData.valid) {
+        // 更新订阅状态
+        this.subscriptionData = {
+          status: STATUS.ACTIVE,
+          features: {
+            countdown: true
+          },
+          licenseKey: licenseKey,
+          licenseActivatedOn: new Date().toISOString(),
+          licenseExpiresOn: licenseData.expiresAt,
+          email: licenseData.email
+        };
 
-    await this.saveSubscriptionData();
-    this.updateUI();
+        await this.saveSubscriptionData();
+        this.updateUI();
+        return { success: true, message: 'License activated successfully!' };
+      } else {
+        throw new Error(licenseData.message || 'Invalid license key');
+      }
+    } catch (error) {
+      console.error('License activation failed:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  // 请求获取许可证密钥的函数
+  async requestLicenseKey(email) {
+    try {
+      // 使用API模块请求许可证密钥
+      const data = await requestLicenseKey(email);
+      return { success: true, message: data.message || 'License key request submitted successfully!' };
+    } catch (error) {
+      console.error('License key request failed:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  // 邮箱格式验证函数
+  isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   }
 }
 

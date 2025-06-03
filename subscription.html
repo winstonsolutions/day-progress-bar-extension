@@ -164,15 +164,40 @@
       <div id="no-license-section" style="font-size: 14px; color: #5f6368; margin-top: 15px;">
         Don't have a license key yet?
         <button
-          id="get-license-button"
+          id="show-request-form-button"
           style="background: none; border: none; color: #1a73e8; cursor: pointer; font-size: 14px; text-decoration: underline; padding: 0; margin-left: 5px;"
         >
           Get one now
         </button>
       </div>
+
+      <!-- 请求许可证密钥表单 -->
+      <div id="request-license-form" style="margin-top: 15px; display: none;">
+        <div style="border-top: 1px solid #dadce0; padding-top: 15px; margin-top: 15px;">
+          <p style="font-size: 14px; color: #5f6368; margin-bottom: 15px;">
+            Enter your email to request a license key. We'll send it to you once your payment is processed.
+          </p>
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <input
+              type="email"
+              id="license-email-input"
+              placeholder="Enter your email address"
+              style="flex-grow: 1; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; font-size: 14px;"
+            >
+            <button
+              id="request-license-button"
+              class="cta-button"
+              style="width: auto; background-color: #1a73e8;"
+            >
+              Request License
+            </button>
+          </div>
+          <div id="request-license-status" style="font-size: 14px; margin-top: 10px; display: none;"></div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script src="subscription.js"></script>
+  <script src="subscription.js" type="module"></script>
 </body>
 </html>

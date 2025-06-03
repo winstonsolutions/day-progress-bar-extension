@@ -34,7 +34,7 @@ function loadSettings() {
       // 更新按钮文本，如果按钮已经存在
       const hideBtn = document.getElementById("day-progress-hide-btn");
       if (hideBtn) {
-        hideBtn.textContent = "Show Bar";
+        hideBtn.textContent = "Show";
       }
     }
     updateProgressBar(); // Update after loading settings
@@ -299,10 +299,7 @@ function createProgressBar() {
   // Hide button
   const hideBtn = document.createElement("button");
   hideBtn.id = "day-progress-hide-btn";
-  hideBtn.textContent = "Hide Bar";
-  hideBtn.style.backgroundColor = "#f1f3f4";
-  hideBtn.style.color = "#202124";
-  hideBtn.style.border = "1px solid rgba(0, 0, 0, 0.15)";
+  hideBtn.textContent = "Hide";
   hideBtn.style.flex = "1";
   hideBtn.addEventListener("click", toggleProgressBarVisibility);
   buttonContainer.appendChild(hideBtn);
@@ -1057,7 +1054,7 @@ function toggleProgressBarVisibility() {
     // 更新按钮文本
     const hideBtn = document.getElementById("day-progress-hide-btn");
     if (hideBtn) {
-      hideBtn.textContent = isHidden ? "Hide Bar" : "Show Bar";
+      hideBtn.textContent = isHidden ? "Hide" : "Show";
     }
 
     // 切换可见性

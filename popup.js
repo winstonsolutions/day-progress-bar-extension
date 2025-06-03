@@ -22,10 +22,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // 向当前活动标签页发送消息，通知内容脚本更新显示状态
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
           if (tabs[0]) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-              action: 'toggleProgressBarVisibility',
-              hidden: newState
-            });
+            try {
+              chrome.tabs.sendMessage(
+                tabs[0].id,
+                {
+                  action: 'toggleProgressBarVisibility',
+                  hidden: newState
+                },
+                // 添加回调函数处理响应
+                function(response) {
+                  // 即使没有响应或发生错误，也不中断操作
+                  console.log('状态更新完成', response);
+                }
+              );
+            } catch (error) {
+              // 捕获并记录任何错误
+              console.error('发送消息时出错:', error);
+            }
           }
         });
       });

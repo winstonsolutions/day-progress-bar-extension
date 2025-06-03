@@ -1113,6 +1113,8 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   if (message.action === 'toggleProgressBarVisibility') {
     // 直接使用消息中传递的隐藏状态
     toggleProgressBarVisibility(message.hidden);
+    // 立即响应，不再需要异步
+    sendResponse({success: true});
   } else if (message.action === 'openSettingsPanel') {
     const panel = document.getElementById("day-progress-settings-panel");
     if (panel) {
@@ -1122,6 +1124,8 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
         document.addEventListener('click', closeSettingsPanelOnClickOutside);
       }, 10);
     }
+    // 立即响应，不再需要异步
+    sendResponse({success: true});
   }
-  return true; // 保持消息通道开放以异步响应
+  // 不返回true，表示我们已经同步处理完毕
 });

@@ -35,10 +35,13 @@ function loadSettings() {
       const hideBtn = document.getElementById("day-progress-hide-btn");
       if (hideBtn) {
         hideBtn.textContent = "Show";
-        // 确保按钮样式一致 - 使用灰色样式
+        // 使用灰色次要按钮样式
         hideBtn.style.backgroundColor = "#f1f3f4";
         hideBtn.style.color = "#5f6368";
+        hideBtn.style.flex = "1";
+        hideBtn.style.height = "100%";
         hideBtn.style.lineHeight = "36px";
+        hideBtn.style.margin = "0";
         hideBtn.style.padding = "0";
       }
     }
@@ -287,11 +290,13 @@ function createProgressBar() {
   settingsPanel.appendChild(startTimeGroup.container);
   settingsPanel.appendChild(endTimeGroup.container);
 
-  // Button container for Save and Hide buttons
+  // Button container for Save and Hide buttons - 完全重构确保对齐
   const buttonContainer = document.createElement("div");
   buttonContainer.style.display = "flex";
   buttonContainer.style.gap = "10px";
   buttonContainer.style.marginTop = "10px";
+  buttonContainer.style.alignItems = "stretch"; // 拉伸对齐子元素
+  buttonContainer.style.height = "36px"; // 明确容器高度
 
   // 创建通用按钮样式函数，确保两个按钮完全一致
   function createStyledButton(id, text, clickHandler, isSecondary = false) {
@@ -299,20 +304,18 @@ function createProgressBar() {
     button.id = id;
     button.textContent = text;
     button.style.flex = "1";
-    button.style.backgroundColor = isSecondary ? "#f1f3f4" : "#4285F4"; // 蓝色或灰色
-    button.style.color = isSecondary ? "#5f6368" : "white"; // 灰色文本或白色文本
+    button.style.backgroundColor = isSecondary ? "#f1f3f4" : "#4285F4";
+    button.style.color = isSecondary ? "#5f6368" : "white";
     button.style.border = "none";
     button.style.borderRadius = "4px";
     button.style.cursor = "pointer";
     button.style.fontWeight = "500";
     button.style.fontSize = "14px";
-    button.style.boxSizing = "border-box";
-    button.style.height = "36px"; // 固定相同高度
+    button.style.height = "100%"; // 使用容器的100%高度
     button.style.lineHeight = "36px";
+    button.style.margin = "0";
     button.style.padding = "0";
     button.style.textAlign = "center";
-    button.style.verticalAlign = "middle";
-    button.style.display = "block";
     button.addEventListener("click", clickHandler);
     return button;
   }
@@ -1076,10 +1079,13 @@ function toggleProgressBarVisibility() {
     const hideBtn = document.getElementById("day-progress-hide-btn");
     if (hideBtn) {
       hideBtn.textContent = isHidden ? "Hide" : "Show";
-      // 确保按钮样式不变 - 使用灰色样式
+      // 使用灰色次要按钮样式
       hideBtn.style.backgroundColor = "#f1f3f4";
       hideBtn.style.color = "#5f6368";
+      hideBtn.style.flex = "1";
+      hideBtn.style.height = "100%";
       hideBtn.style.lineHeight = "36px";
+      hideBtn.style.margin = "0";
       hideBtn.style.padding = "0";
     }
 

@@ -12,7 +12,7 @@
   ],
   "permissions": ["storage", "identity", "notifications", "contextMenus"],
   "optional_permissions": [],
-  "host_permissions": ["https://*.googleapis.com/"],
+  "host_permissions": ["https://*.googleapis.com/", "https://day-progress-bar-backend-production.up.railway.app/"],
   "background": {
     "service_worker": "background.js"
   },
@@ -24,7 +24,7 @@
     "scopes": ["https://www.googleapis.com/auth/userinfo.email"]
   },
   "web_accessible_resources": [{
-    "resources": ["subscription.html", "subscription.js"],
+    "resources": ["subscription.html", "subscription.js", "payment.html", "payment.js", "api.js"],
     "matches": ["<all_urls>"]
   }]
 }

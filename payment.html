@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Work Hours Progress Bar - Payment</title>
+  <style>
+    body {
+      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f9fa;
+      color: #202124;
+    }
+    .container {
+      display: flex;
+      min-height: 100vh;
+    }
+    .product-info {
+      width: 50%;
+      background-color: #1a73e8;
+      color: white;
+      padding: 40px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .product-title {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    .product-price {
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .price-period {
+      font-size: 16px;
+      opacity: 0.8;
+    }
+    .product-description {
+      font-size: 16px;
+      margin-bottom: 30px;
+      opacity: 0.9;
+    }
+    .feature-list {
+      padding: 0;
+      list-style-type: none;
+    }
+    .feature-item {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+    .feature-item svg {
+      margin-right: 10px;
+    }
+    .payment-section {
+      width: 50%;
+      padding: 40px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .payment-form {
+      max-width: 450px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #5f6368;
+    }
+    .form-control {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .divider {
+      text-align: center;
+      position: relative;
+      margin: 30px 0;
+      color: #5f6368;
+    }
+    .divider::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background-color: #dadce0;
+      z-index: -1;
+    }
+    .divider span {
+      background-color: #f8f9fa;
+      padding: 0 10px;
+    }
+    .payment-method {
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .payment-method label {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      cursor: pointer;
+    }
+    .payment-method:hover {
+      background-color: #f1f3f4;
+    }
+    .payment-method input {
+      margin-right: 15px;
+    }
+    .payment-icons {
+      margin-left: auto;
+      display: flex;
+      gap: 5px;
+    }
+    .payment-icons img {
+      height: 24px;
+      width: auto;
+    }
+    .btn-pay {
+      width: 100%;
+      padding: 12px;
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .btn-pay:hover {
+      background-color: #1765cc;
+    }
+    .payment-info {
+      margin-top: 15px;
+      font-size: 12px;
+      color: #5f6368;
+      text-align: center;
+    }
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .checkbox-container input {
+      margin-right: 10px;
+    }
+    .checkbox-container label {
+      font-size: 14px;
+      color: #5f6368;
+    }
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      .product-info, .payment-section {
+        width: 100%;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 左侧产品信息 -->
+    <div class="product-info">
+      <div>
+        <h1 class="product-title">Day Progress Bar - Premium</h1>
+        <div class="product-price">
+          $1.99 <span class="price-period">/ month</span>
+        </div>
+        <p class="product-description">
+          Upgrade to Premium and get access to all features to boost your productivity.
+        </p>
+        <ul class="feature-list">
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Countdown Timer Feature
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Customizable Notifications
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Priority Support
+          </li>
+          <li class="feature-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            30-Day Free Trial
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 右侧支付部分 -->
+    <div class="payment-section">
+      <div class="payment-form">
+        <div class="form-group">
+          <label for="email" class="form-label">邮箱</label>
+          <input type="email" id="email" class="form-control" placeholder="email@example.com" required>
+          <small style="color:#5f6368;font-size:12px;margin-top:5px;display:block;">
+            我们会将许可证密钥发送到此电子邮件地址
+          </small>
+        </div>
+
+        <div class="divider">
+          <span>支付方式</span>
+        </div>
+
+        <!-- 支付方式选择 -->
+        <div class="payment-methods">
+          <div class="payment-method">
+            <label>
+              <input type="radio" name="payment-method" value="card" checked>
+              <span>银行卡</span>
+              <div class="payment-icons">
+                <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c70bc76517d798d95c902fca89.svg" alt="Visa">
+                <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130d8670b61e5c7c3da6f2c.svg" alt="Mastercard">
+                <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6b98a684e9534e204b7.svg" alt="Amex">
+              </div>
+            </label>
+          </div>
+
+          <div class="payment-method">
+            <label>
+              <input type="radio" name="payment-method" value="alipay">
+              <span>支付宝</span>
+            </label>
+          </div>
+
+          <div class="payment-method">
+            <label>
+              <input type="radio" name="payment-method" value="wechat">
+              <span>微信支付</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="checkbox-container">
+          <input type="checkbox" id="save-info" checked>
+          <label for="save-info">安全地保存我的信息，用于一键结账</label>
+        </div>
+
+        <button id="btn-pay" class="btn-pay">立即支付</button>
+
+        <div class="payment-info">
+          <p>确认您的订阅，即表示您允许 Day Progress Bar 按照条款从您的账户收取费用。您可以随时取消订阅。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="payment.js" type="module"></script>
+</body>
+</html>

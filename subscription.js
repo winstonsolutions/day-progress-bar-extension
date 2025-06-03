@@ -467,11 +467,12 @@ class SubscriptionManager {
               break;
             case STATUS.FREE:
               console.log('开始免费试用');
-              await this.startTrial();
-              alert('免费试用已激活！请刷新网页以使用倒计时功能。');
+              // 跳转到自定义支付页面，并标记为试用模式
+              window.location.href = chrome.runtime.getURL('payment.html?trial=true');
               break;
             default:
-              await this.subscribe();
+              // 跳转到自定义支付页面
+              window.location.href = chrome.runtime.getURL('payment.html');
               break;
           }
         } catch (error) {
@@ -527,42 +528,8 @@ class SubscriptionManager {
     // 显示/隐藏许可证请求表单
     if (showRequestFormButton) {
       showRequestFormButton.addEventListener('click', () => {
-        // 显示邮箱输入对话框
-        document.getElementById('quick-email-dialog').style.display = 'block';
-      });
-    }
-
-    // 处理邮箱对话框
-    const quickEmailDialog = document.getElementById('quick-email-dialog');
-    const quickEmailInput = document.getElementById('quick-email-input');
-    const cancelEmailButton = document.getElementById('cancel-quick-email');
-    const proceedWithEmailButton = document.getElementById('proceed-with-email');
-
-    if (cancelEmailButton) {
-      cancelEmailButton.addEventListener('click', () => {
-        quickEmailDialog.style.display = 'none';
-      });
-    }
-
-    if (proceedWithEmailButton && quickEmailInput) {
-      proceedWithEmailButton.addEventListener('click', async () => {
-        const email = quickEmailInput.value.trim();
-
-        if (!email || !this.isValidEmail(email)) {
-          alert('Please enter a valid email address');
-          return;
-        }
-
-        // 关闭对话框
-        quickEmailDialog.style.display = 'none';
-
-        // 直接使用邮箱发起支付
-        try {
-          await PaymentAPI.initiatePayment(MONTHLY_PRICE, email);
-        } catch (error) {
-          console.error('Failed to open payment page:', error);
-          alert('Failed to open payment page: ' + error.message);
-        }
+        // 跳转到自定义支付页面
+        window.location.href = chrome.runtime.getURL('payment.html?source=license');
       });
     }
 

@@ -1,5 +1,6 @@
 // Subscription management for Work Hours Progress Bar extension
 import { API_BASE_URL, createCheckoutSession, verifyLicense, requestLicenseKey, verifyPaymentStatus } from './api.js';
+import { initClerk, openSignInModal, getCurrentUser, isAuthenticated } from './clerk-auth.js';
 
 // Constants
 const MONTHLY_PRICE = 1.99;
@@ -17,14 +18,22 @@ const STATUS = {
 const PaymentAPI = {
   initiatePayment: async function(priceInUSD, email = null) {
     try {
-      // 如果没有提供邮箱，尝试通过对话框获取
-      if (!email) {
-        email = prompt('Please enter your email to receive the license key after payment:', '');
+      // First check if user is authenticated with Clerk
+      if (!isAuthenticated()) {
+        // Open Clerk sign-in modal and wait for authentication
+        const user = await openSignInModal();
 
-        // 如果用户取消或没有输入邮箱，则终止支付流程
-        if (!email || !this.isValidEmail(email)) {
-          throw new Error('A valid email is required to process payment and send your license key');
+        // If user canceled authentication, abort payment process
+        if (!user) {
+          throw new Error('Authentication required to continue with payment');
         }
+
+        // Use authenticated user's email
+        email = user.email;
+      } else if (!email) {
+        // If not provided, use the authenticated user's email
+        const user = getCurrentUser();
+        email = user.email;
       }
 
       // 使用API模块创建Stripe结账会话，传递邮箱参数
@@ -76,6 +85,9 @@ class SubscriptionManager {
 
     // 异步加载数据，但确保有默认值
     this.loadSubscriptionData().then(() => {
+      // Initialize Clerk first
+      return initClerk();
+    }).then(() => {
       this.updateUI();
       this.setupEventListeners();
 
@@ -89,7 +101,7 @@ class SubscriptionManager {
 
       console.log('订阅管理器初始化完成');
     }).catch(error => {
-      console.error('加载订阅数据时出错:', error);
+      console.error('加载订阅数据或初始化Clerk时出错:', error);
     });
   }
 
@@ -188,6 +200,14 @@ class SubscriptionManager {
   async startTrial() {
     console.log('开始设置试用状态...');
 
+    // First ensure user is authenticated with Clerk
+    if (!isAuthenticated()) {
+      const user = await openSignInModal();
+      if (!user) {
+        throw new Error('Authentication required to start trial');
+      }
+    }
+
     const now = new Date();
     const trialEndDate = new Date(now);
     trialEndDate.setDate(now.getDate() + TRIAL_PERIOD_DAYS);
@@ -198,7 +218,9 @@ class SubscriptionManager {
         countdown: true
       },
       trialStarted: now.toISOString(),
-      trialEnds: trialEndDate.toISOString()
+      trialEnds: trialEndDate.toISOString(),
+      clerkUserId: getCurrentUser().id,
+      email: getCurrentUser().email
     };
 
     console.log('试用数据准备完毕:', this.subscriptionData);
@@ -216,7 +238,16 @@ class SubscriptionManager {
 
   async subscribe() {
     try {
-      const paymentResult = await PaymentAPI.initiatePayment(MONTHLY_PRICE);
+      // Ensure user is authenticated with Clerk
+      if (!isAuthenticated()) {
+        const user = await openSignInModal();
+        if (!user) {
+          throw new Error('Authentication required to subscribe');
+        }
+      }
+
+      const user = getCurrentUser();
+      const paymentResult = await PaymentAPI.initiatePayment(MONTHLY_PRICE, user.email);
 
       const now = new Date();
       const nextBillingDate = new Date(now);
@@ -230,7 +261,8 @@ class SubscriptionManager {
         subscriptionStarted: now.toISOString(),
         nextBillingDate: nextBillingDate.toISOString(),
         latestTransaction: paymentResult,
-        email: paymentResult.email
+        clerkUserId: user.id,
+        email: user.email
       };
 
       await this.saveSubscriptionData();
@@ -467,10 +499,26 @@ class SubscriptionManager {
               break;
             case STATUS.FREE:
               console.log('开始免费试用');
+              // 先进行Clerk身份验证
+              if (!isAuthenticated()) {
+                const user = await openSignInModal();
+                if (!user) {
+                  console.log('用户取消了身份验证');
+                  return;
+                }
+              }
               // 跳转到自定义支付页面，并标记为试用模式
               window.location.href = chrome.runtime.getURL('payment.html?trial=true');
               break;
             default:
+              // 先进行Clerk身份验证
+              if (!isAuthenticated()) {
+                const user = await openSignInModal();
+                if (!user) {
+                  console.log('用户取消了身份验证');
+                  return;
+                }
+              }
               // 跳转到自定义支付页面
               window.location.href = chrome.runtime.getURL('payment.html');
               break;
@@ -499,6 +547,15 @@ class SubscriptionManager {
 
     if (saveLicenseButton && licenseKeyInput && licenseStatus) {
       saveLicenseButton.addEventListener('click', async () => {
+        // Ensure user is authenticated with Clerk
+        if (!isAuthenticated()) {
+          const user = await openSignInModal();
+          if (!user) {
+            this.showLicenseError('Authentication required to activate license');
+            return;
+          }
+        }
+
         const licenseKey = licenseKeyInput.value.trim();
         if (!licenseKey) {
           this.showLicenseError('Please enter a license key');
@@ -527,7 +584,16 @@ class SubscriptionManager {
 
     // 显示/隐藏许可证请求表单
     if (showRequestFormButton) {
-      showRequestFormButton.addEventListener('click', () => {
+      showRequestFormButton.addEventListener('click', async () => {
+        // Ensure user is authenticated with Clerk
+        if (!isAuthenticated()) {
+          const user = await openSignInModal();
+          if (!user) {
+            console.log('用户取消了身份验证');
+            return;
+          }
+        }
+
         // 跳转到自定义支付页面
         window.location.href = chrome.runtime.getURL('payment.html?source=license');
       });
@@ -592,6 +658,16 @@ class SubscriptionManager {
 
   async activateLicense(licenseKey) {
     try {
+      // Ensure user is authenticated with Clerk
+      if (!isAuthenticated()) {
+        const user = await openSignInModal();
+        if (!user) {
+          return { success: false, message: 'Authentication required to activate license' };
+        }
+      }
+
+      const user = getCurrentUser();
+
       // 调用API模块验证许可证密钥
       const licenseData = await verifyLicense(licenseKey);
 
@@ -605,7 +681,8 @@ class SubscriptionManager {
           licenseKey: licenseKey,
           licenseActivatedOn: new Date().toISOString(),
           licenseExpiresOn: licenseData.expiresAt,
-          email: licenseData.email
+          clerkUserId: user.id,
+          email: user.email
         };
 
         await this.saveSubscriptionData();

@@ -35,6 +35,9 @@ function loadSettings() {
       const hideBtn = document.getElementById("day-progress-hide-btn");
       if (hideBtn) {
         hideBtn.textContent = "Show";
+        // 确保按钮样式一致
+        hideBtn.style.backgroundColor = "#4285F4";
+        hideBtn.style.color = "white";
       }
     }
     updateProgressBar(); // Update after loading settings
@@ -288,20 +291,37 @@ function createProgressBar() {
   buttonContainer.style.gap = "10px";
   buttonContainer.style.marginTop = "10px";
 
+  // 创建通用按钮样式函数，确保两个按钮完全一致
+  function createStyledButton(id, text, clickHandler) {
+    const button = document.createElement("button");
+    button.id = id;
+    button.textContent = text;
+    button.style.flex = "1";
+    button.style.padding = "10px";
+    button.style.backgroundColor = "#4285F4";  // Google蓝色
+    button.style.color = "white";
+    button.style.border = "none";
+    button.style.borderRadius = "4px";
+    button.style.cursor = "pointer";
+    button.style.fontWeight = "500";
+    button.style.fontSize = "14px";
+    button.style.boxSizing = "border-box";
+    button.style.height = "36px";
+    button.style.lineHeight = "16px";
+    button.style.textAlign = "center";
+    button.style.display = "flex";
+    button.style.justifyContent = "center";
+    button.style.alignItems = "center";
+    button.addEventListener("click", clickHandler);
+    return button;
+  }
+
   // Save button
-  const saveBtn = document.createElement("button");
-  saveBtn.id = "day-progress-save-btn";
-  saveBtn.textContent = "Save";
-  saveBtn.addEventListener("click", saveSettings);
-  saveBtn.style.flex = "1";
+  const saveBtn = createStyledButton("day-progress-save-btn", "Save", saveSettings);
   buttonContainer.appendChild(saveBtn);
 
   // Hide button
-  const hideBtn = document.createElement("button");
-  hideBtn.id = "day-progress-hide-btn";
-  hideBtn.textContent = "Hide";
-  hideBtn.style.flex = "1";
-  hideBtn.addEventListener("click", toggleProgressBarVisibility);
+  const hideBtn = createStyledButton("day-progress-hide-btn", "Hide", toggleProgressBarVisibility);
   buttonContainer.appendChild(hideBtn);
 
   settingsPanel.appendChild(buttonContainer);
@@ -1055,6 +1075,9 @@ function toggleProgressBarVisibility() {
     const hideBtn = document.getElementById("day-progress-hide-btn");
     if (hideBtn) {
       hideBtn.textContent = isHidden ? "Hide" : "Show";
+      // 确保按钮样式不变，背景颜色保持一致
+      hideBtn.style.backgroundColor = "#4285F4";
+      hideBtn.style.color = "white";
     }
 
     // 切换可见性

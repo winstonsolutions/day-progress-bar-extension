@@ -3,274 +3,400 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Work Hours Progress Bar - Payment</title>
+  <title>Work Hours Progress Bar - Checkout</title>
   <style>
-    body {
-      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+    :root {
+      --primary-color: #635BFF;
+      --background-color: #FFFFFF;
+      --secondary-background: #F7FAFC;
+      --text-color: #1A1F36;
+      --text-secondary: #697386;
+      --border-color: #E6E8EB;
+      --button-text: #FFFFFF;
+      --error-color: #DF1B41;
+      --success-color: #3ECF8E;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      background-color: #f8f9fa;
-      color: #202124;
     }
-    .container {
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--secondary-background);
+      color: var(--text-color);
+      line-height: 1.5;
+      font-size: 16px;
+    }
+
+    .sr-root {
       display: flex;
+      flex-direction: column;
+      justify-content: center;
       min-height: 100vh;
+      padding: 20px;
     }
-    .product-info {
-      width: 50%;
-      background-color: #1a73e8;
-      color: white;
-      padding: 40px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .product-title {
-      font-size: 24px;
-      margin-bottom: 10px;
-    }
-    .product-price {
-      font-size: 48px;
-      font-weight: 700;
-      margin-bottom: 20px;
-    }
-    .price-period {
-      font-size: 16px;
-      opacity: 0.8;
-    }
-    .product-description {
-      font-size: 16px;
-      margin-bottom: 30px;
-      opacity: 0.9;
-    }
-    .feature-list {
-      padding: 0;
-      list-style-type: none;
-    }
-    .feature-item {
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-    }
-    .feature-item svg {
-      margin-right: 10px;
-    }
-    .payment-section {
-      width: 50%;
-      padding: 40px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .payment-form {
-      max-width: 450px;
+
+    .sr-main {
+      width: 100%;
+      max-width: 980px;
       margin: 0 auto;
-      width: 100%;
-    }
-    .form-group {
-      margin-bottom: 20px;
-    }
-    .form-label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
-      color: #5f6368;
-    }
-    .form-control {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #dadce0;
-      border-radius: 4px;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-    .divider {
-      text-align: center;
-      position: relative;
-      margin: 30px 0;
-      color: #5f6368;
-    }
-    .divider::before {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background-color: #dadce0;
-      z-index: -1;
-    }
-    .divider span {
-      background-color: #f8f9fa;
-      padding: 0 10px;
-    }
-    .payment-method {
-      border: 1px solid #dadce0;
-      border-radius: 4px;
-      margin-bottom: 10px;
+      background: var(--background-color);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      display: flex;
       overflow: hidden;
     }
-    .payment-method label {
+
+    .sr-content {
+      padding: 40px;
+      width: 50%;
+    }
+
+    .sr-header {
+      margin-bottom: 24px;
+    }
+
+    .sr-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .sr-header p {
+      color: var(--text-secondary);
+      font-size: 16px;
+    }
+
+    .sr-legal-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 24px;
+    }
+
+    .sr-price {
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .sr-price span {
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    .sr-product-info {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 40px;
       display: flex;
-      align-items: center;
-      padding: 15px;
-      cursor: pointer;
+      flex-direction: column;
+      justify-content: center;
+      width: 50%;
     }
-    .payment-method:hover {
-      background-color: #f1f3f4;
+
+    .sr-product-info h2 {
+      font-size: 28px;
+      margin-bottom: 16px;
     }
-    .payment-method input {
-      margin-right: 15px;
+
+    .sr-product-desc {
+      font-size: 16px;
+      opacity: 0.9;
+      margin-bottom: 24px;
     }
-    .payment-icons {
-      margin-left: auto;
-      display: flex;
-      gap: 5px;
+
+    .sr-field {
+      margin-bottom: 24px;
     }
-    .payment-icons img {
-      height: 24px;
-      width: auto;
+
+    .sr-field-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--text-color);
     }
-    .btn-pay {
+
+    .sr-input {
       width: 100%;
       padding: 12px;
-      background-color: #1a73e8;
-      color: white;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 16px;
+      transition: border 0.15s ease;
+    }
+
+    .sr-input:focus {
+      border-color: var(--primary-color);
+      outline: none;
+      box-shadow: 0 0 0 1px var(--primary-color);
+    }
+
+    .sr-payment-methods {
+      margin-top: 16px;
+    }
+
+    .sr-payment-method {
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+
+    .sr-payment-method:hover {
+      border-color: var(--primary-color);
+      background-color: rgba(99, 91, 255, 0.05);
+    }
+
+    .sr-payment-method.selected {
+      border-color: var(--primary-color);
+      background-color: rgba(99, 91, 255, 0.05);
+    }
+
+    .sr-payment-method input {
+      margin-right: 16px;
+    }
+
+    .sr-payment-method-icon {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .sr-payment-method-icon img {
+      height: 24px;
+    }
+
+    .sr-field-error {
+      color: var(--error-color);
+      font-size: 14px;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .sr-submit {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary-color);
+      color: var(--button-text);
       border: none;
       border-radius: 4px;
       font-size: 16px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
-      margin-top: 20px;
+      transition: all 0.15s ease;
+      margin-top: 24px;
     }
-    .btn-pay:hover {
-      background-color: #1765cc;
+
+    .sr-submit:hover {
+      opacity: 0.9;
     }
-    .payment-info {
-      margin-top: 15px;
-      font-size: 12px;
-      color: #5f6368;
+
+    .sr-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .sr-checkbox {
+      display: flex;
+      align-items: flex-start;
+      margin-top: 16px;
+    }
+
+    .sr-checkbox input {
+      margin-right: 12px;
+      margin-top: 4px;
+    }
+
+    .sr-checkbox label {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .sr-separator {
+      position: relative;
+      margin: 24px 0;
       text-align: center;
     }
-    .checkbox-container {
+
+    .sr-separator::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 1px;
+      background-color: var(--border-color);
+      top: 50%;
+      left: 0;
+      z-index: 0;
+    }
+
+    .sr-separator span {
+      background-color: var(--background-color);
+      padding: 0 10px;
+      position: relative;
+      z-index: 1;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .sr-feature {
       display: flex;
       align-items: center;
-      margin-top: 20px;
+      margin-bottom: 12px;
     }
-    .checkbox-container input {
-      margin-right: 10px;
+
+    .sr-feature svg {
+      margin-right: 12px;
+      flex-shrink: 0;
     }
-    .checkbox-container label {
-      font-size: 14px;
-      color: #5f6368;
+
+    .sr-badge {
+      display: inline-block;
+      background-color: rgba(255, 255, 255, 0.15);
+      padding: 4px 8px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-left: 8px;
+      vertical-align: middle;
     }
+
+    .sr-footer {
+      margin-top: 24px;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .sr-footer img {
+      height: 24px;
+    }
+
     @media (max-width: 768px) {
-      .container {
+      .sr-main {
         flex-direction: column;
       }
-      .product-info, .payment-section {
+
+      .sr-content,
+      .sr-product-info {
         width: 100%;
-        padding: 20px;
+      }
+
+      .sr-product-info {
+        order: -1;
+        padding: 32px 24px;
+      }
+
+      .sr-content {
+        padding: 24px;
       }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- 左侧产品信息 -->
-    <div class="product-info">
-      <div>
-        <h1 class="product-title">Day Progress Bar - Premium</h1>
-        <div class="product-price">
-          $1.99 <span class="price-period">/ month</span>
-        </div>
-        <p class="product-description">
-          Upgrade to Premium and get access to all features to boost your productivity.
-        </p>
-        <ul class="feature-list">
-          <li class="feature-item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            Countdown Timer Feature
-          </li>
-          <li class="feature-item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            Customizable Notifications
-          </li>
-          <li class="feature-item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            Priority Support
-          </li>
-          <li class="feature-item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            30-Day Free Trial
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 右侧支付部分 -->
-    <div class="payment-section">
-      <div class="payment-form">
-        <div class="form-group">
-          <label for="email" class="form-label">邮箱</label>
-          <input type="email" id="email" class="form-control" placeholder="email@example.com" required>
-          <small style="color:#5f6368;font-size:12px;margin-top:5px;display:block;">
-            我们会将许可证密钥发送到此电子邮件地址
-          </small>
+  <div class="sr-root">
+    <div class="sr-main">
+      <!-- 左侧：支付表单 -->
+      <div class="sr-content">
+        <div class="sr-header">
+          <h1>完成您的订阅</h1>
+          <p>输入您的详细信息以完成订阅</p>
         </div>
 
-        <div class="divider">
+        <div class="sr-price">
+          $1.99 <span>/月</span>
+        </div>
+
+        <div class="sr-field">
+          <label for="email" class="sr-field-label">邮箱</label>
+          <input type="email" id="email" class="sr-input" placeholder="email@example.com" required>
+          <div class="sr-field-error" id="email-error">请输入有效的邮箱地址</div>
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+            我们将把您的许可证密钥发送到此邮箱
+          </p>
+        </div>
+
+        <div class="sr-separator">
           <span>支付方式</span>
         </div>
 
-        <!-- 支付方式选择 -->
-        <div class="payment-methods">
-          <div class="payment-method">
-            <label>
-              <input type="radio" name="payment-method" value="card" checked>
-              <span>银行卡</span>
-              <div class="payment-icons">
-                <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c70bc76517d798d95c902fca89.svg" alt="Visa">
-                <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130d8670b61e5c7c3da6f2c.svg" alt="Mastercard">
-                <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6b98a684e9534e204b7.svg" alt="Amex">
-              </div>
-            </label>
+        <div class="sr-payment-methods">
+          <div class="sr-payment-method selected" data-method="card">
+            <input type="radio" name="payment-method" value="card" checked>
+            <div>银行卡</div>
+            <div class="sr-payment-method-icon">
+              <img src="https://js.stripe.com/v3/fingerprinted/img/visa-729c05c70bc76517d798d95c902fca89.svg" alt="Visa">
+              <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130d8670b61e5c7c3da6f2c.svg" alt="Mastercard">
+              <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6b98a684e9534e204b7.svg" alt="Amex">
+            </div>
           </div>
 
-          <div class="payment-method">
-            <label>
-              <input type="radio" name="payment-method" value="alipay">
-              <span>支付宝</span>
-            </label>
+          <div class="sr-payment-method" data-method="alipay">
+            <input type="radio" name="payment-method" value="alipay">
+            <div>支付宝</div>
           </div>
 
-          <div class="payment-method">
-            <label>
-              <input type="radio" name="payment-method" value="wechat">
-              <span>微信支付</span>
-            </label>
+          <div class="sr-payment-method" data-method="wechat">
+            <input type="radio" name="payment-method" value="wechat">
+            <div>微信支付</div>
           </div>
         </div>
 
-        <div class="checkbox-container">
+        <div class="sr-checkbox">
           <input type="checkbox" id="save-info" checked>
-          <label for="save-info">安全地保存我的信息，用于一键结账</label>
+          <label for="save-info">保存我的信息以便下次快速结账</label>
         </div>
 
-        <button id="btn-pay" class="btn-pay">立即支付</button>
+        <button id="btn-pay" class="sr-submit">立即支付</button>
 
-        <div class="payment-info">
-          <p>确认您的订阅，即表示您允许 Day Progress Bar 按照条款从您的账户收取费用。您可以随时取消订阅。</p>
+        <div class="sr-legal-text">
+          点击"立即支付"，即表示您同意我们的<a href="#" style="color: var(--primary-color);">服务条款</a>和<a href="#" style="color: var(--primary-color);">隐私政策</a>。您可以随时取消订阅。
+        </div>
+
+        <div class="sr-footer">
+          <img src="https://js.stripe.com/v3/fingerprinted/img/powered_by_stripe-49d2cf2838b11aa511be8b3166f9b27f.svg" alt="Powered by Stripe">
+        </div>
+      </div>
+
+      <!-- 右侧：产品信息 -->
+      <div class="sr-product-info">
+        <h2>Day Progress Bar <span class="sr-badge">Premium</span></h2>
+        <p class="sr-product-desc">提升您的工作效率，获取所有高级功能</p>
+
+        <div style="margin-top: 20px;">
+          <div class="sr-feature">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 0C4.5 0 0 4.5 0 10C0 15.5 4.5 20 10 20C15.5 20 20 15.5 20 10C20 4.5 15.5 0 10 0ZM8 15L3 10L4.41 8.59L8 12.17L15.59 4.58L17 6L8 15Z" fill="white"/>
+            </svg>
+            <div>倒计时功能</div>
+          </div>
+          <div class="sr-feature">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 0C4.5 0 0 4.5 0 10C0 15.5 4.5 20 10 20C15.5 20 20 15.5 20 10C20 4.5 15.5 0 10 0ZM8 15L3 10L4.41 8.59L8 12.17L15.59 4.58L17 6L8 15Z" fill="white"/>
+            </svg>
+            <div>自定义通知</div>
+          </div>
+          <div class="sr-feature">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 0C4.5 0 0 4.5 0 10C0 15.5 4.5 20 10 20C15.5 20 20 15.5 20 10C20 4.5 15.5 0 10 0ZM8 15L3 10L4.41 8.59L8 12.17L15.59 4.58L17 6L8 15Z" fill="white"/>
+            </svg>
+            <div>优先技术支持</div>
+          </div>
+          <div class="sr-feature">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 0C4.5 0 0 4.5 0 10C0 15.5 4.5 20 10 20C15.5 20 20 15.5 20 10C20 4.5 15.5 0 10 0ZM8 15L3 10L4.41 8.59L8 12.17L15.59 4.58L17 6L8 15Z" fill="white"/>
+            </svg>
+            <div>30天免费试用</div>
+          </div>
         </div>
       </div>
     </div>

@@ -38,6 +38,8 @@ function loadSettings() {
         // 确保按钮样式一致
         hideBtn.style.backgroundColor = "#4285F4";
         hideBtn.style.color = "white";
+        hideBtn.style.lineHeight = "36px";
+        hideBtn.style.padding = "0";
       }
     }
     updateProgressBar(); // Update after loading settings
@@ -297,7 +299,6 @@ function createProgressBar() {
     button.id = id;
     button.textContent = text;
     button.style.flex = "1";
-    button.style.padding = "10px";
     button.style.backgroundColor = "#4285F4";  // Google蓝色
     button.style.color = "white";
     button.style.border = "none";
@@ -307,11 +308,11 @@ function createProgressBar() {
     button.style.fontSize = "14px";
     button.style.boxSizing = "border-box";
     button.style.height = "36px";
-    button.style.lineHeight = "16px";
+    button.style.lineHeight = "36px"; // 和按钮高度一致，确保文字垂直居中
+    button.style.padding = "0";       // 移除padding，用行高控制垂直居中
     button.style.textAlign = "center";
-    button.style.display = "flex";
-    button.style.justifyContent = "center";
-    button.style.alignItems = "center";
+    button.style.verticalAlign = "middle";
+    button.style.display = "block";   // 改用block更简单地处理垂直居中
     button.addEventListener("click", clickHandler);
     return button;
   }
@@ -1075,9 +1076,11 @@ function toggleProgressBarVisibility() {
     const hideBtn = document.getElementById("day-progress-hide-btn");
     if (hideBtn) {
       hideBtn.textContent = isHidden ? "Hide" : "Show";
-      // 确保按钮样式不变，背景颜色保持一致
+      // 确保按钮样式不变
       hideBtn.style.backgroundColor = "#4285F4";
       hideBtn.style.color = "white";
+      hideBtn.style.lineHeight = "36px";
+      hideBtn.style.padding = "0";
     }
 
     // 切换可见性

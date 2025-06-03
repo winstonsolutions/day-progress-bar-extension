@@ -1110,6 +1110,12 @@ function toggleProgressBarVisibility(forceHidden) {
 
 // 在文件顶部添加消息监听器
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+  // 处理ping消息，用于检查内容脚本是否加载
+  if (message.action === 'ping') {
+    sendResponse({pong: true});
+    return;
+  }
+
   if (message.action === 'toggleProgressBarVisibility') {
     // 直接使用消息中传递的隐藏状态
     toggleProgressBarVisibility(message.hidden);

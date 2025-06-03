@@ -13,8 +13,12 @@ const API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app
  * @returns {Promise<{sessionUrl: string}>} - Stripe结账会话URL
  */
 async function createCheckoutSession(priceInUSD, email = null) {
-  const successUrl = chrome.runtime.getURL('subscription.html?payment_success=true');
-  const cancelUrl = chrome.runtime.getURL('subscription.html?payment_cancelled=true');
+  // 获取扩展ID，用于构建完整的回调URL
+  const extensionId = chrome.runtime.id;
+
+  // 使用重定向URL解决Stripe不接受chrome-extension://开头URL的问题
+  const successUrl = `${API_BASE_URL}/api/stripe/redirect?destination=${encodeURIComponent(`chrome-extension://${extensionId}/subscription.html?payment_success=true`)}`;
+  const cancelUrl = `${API_BASE_URL}/api/stripe/redirect?destination=${encodeURIComponent(`chrome-extension://${extensionId}/subscription.html?payment_cancelled=true`)}`;
 
   try {
     // 调试信息
@@ -83,7 +87,7 @@ async function createCheckoutSession(priceInUSD, email = null) {
  * @returns {Promise<{valid: boolean, expiresAt: string, email: string, message?: string}>}
  */
 async function verifyLicense(licenseKey) {
-  const response = await fetch(`${API_BASE_URL}/api/verify-license`, {
+  const response = await fetch(`${API_BASE_URL}/api/licenses/validate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -105,7 +109,7 @@ async function verifyLicense(licenseKey) {
  * @returns {Promise<{success: boolean, message: string}>}
  */
 async function requestLicenseKey(email) {
-  const response = await fetch(`${API_BASE_URL}/api/request-license`, {
+  const response = await fetch(`${API_BASE_URL}/api/licenses/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

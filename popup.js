@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Check if we're returning from an auth flow - look for storage changes
     chrome.storage.onChanged.addListener((changes, namespace) => {
+      console.log('storage changed:', changes, namespace);
       if (namespace === 'local' && (changes.clerkToken || changes.clerkUser)) {
         console.log('Auth data changed, updating UI');
         console.log('New user data:', changes.clerkUser?.newValue);

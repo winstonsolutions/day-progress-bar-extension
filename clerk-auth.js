@@ -90,6 +90,8 @@ async function handleAuthCallback(token, user) {
   console.log('收到的用户数据:', user);
 
   if (token && user) {
+    // 首先设置全局认证状态
+    console.log('正在设置全局认证状态...');
     clerkToken = token;
     currentUser = {
       id: user.id,
@@ -97,10 +99,9 @@ async function handleAuthCallback(token, user) {
       firstName: user.firstName,
       lastName: user.lastName
     };
+    console.log('全局认证状态设置完成, 现在 isAuthenticated() =', isAuthenticated());
 
-    console.log('设置当前用户数据:', currentUser);
-
-    // Store in Chrome storage
+    // 然后储存到Chrome本地存储
     console.log('正在存储到Chrome本地存储...');
     try {
       await chrome.storage.local.set({
@@ -112,57 +113,65 @@ async function handleAuthCallback(token, user) {
       console.error('Chrome本地存储失败:', storageError);
     }
 
-    // 修改: 直接保存用户数据到 MongoDB，不依赖 storeUserData 函数的认证检查
+    // 现在再调用storeUserData，确保用户已认证
     try {
-      console.log('===== 登录成功，直接保存用户数据到MongoDB =====');
+      console.log('准备保存用户数据到MongoDB，先检查认证状态:', isAuthenticated());
+      if (!isAuthenticated()) {
+        console.warn('警告：用户应该是已认证的，但isAuthenticated()返回false');
+        // 如果发现未认证，再次尝试设置全局状态
+        clerkToken = token;
+        currentUser = {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName
+        };
+        console.log('再次尝试设置认证状态后:', isAuthenticated());
+      }
 
-      // 确保API_BASE_URL可用，优先使用全局window变量
-      const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
-
-      // 准备用户数据
-      const requestData = {
-        clerkId: currentUser.id,
-        email: currentUser.email,
+      const userData = {
         firstName: currentUser.firstName,
         lastName: currentUser.lastName,
+        subscriptionStatus: 'free', // Default to free subscription
         authProvider: user.primaryEmailAddress?.emailAddress ? 'email' : 'social',
         signUpMethod: 'clerk',
-        subscriptionStatus: 'free' // Default to free subscription
       };
 
-      console.log('准备发送到API的用户数据:', requestData);
-      console.log('API端点:', `${API_URL}/api/users`);
-
-      // 直接调用API
-      const response = await fetch(`${API_URL}/api/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      const responseText = await response.text();
-      let responseData;
-
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        responseData = { text: responseText };
-      }
-
-      console.log('API响应状态:', response.status, response.statusText);
-      console.log('API响应数据:', responseData);
-
-      if (!response.ok) {
-        throw new Error(`API错误 ${response.status}: ${JSON.stringify(responseData)}`);
-      }
-
-      console.log('✅ 用户数据成功保存到MongoDB');
+      console.log('调用storeUserData函数保存用户数据到MongoDB:', userData);
+      const result = await storeUserData(userData);
+      console.log('用户数据成功保存到MongoDB:', result);
     } catch (error) {
-      console.error('❌ 保存用户数据到MongoDB失败:', error);
+      console.error('保存用户数据到MongoDB失败:', error);
       console.error('错误详情:', error.stack || error);
-      // Continue with authentication even if MongoDB storage fails
+
+      // 如果调用storeUserData失败，尝试直接调用API作为备用方案
+      try {
+        console.log('尝试通过备用方案直接调用API保存用户数据...');
+        const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+
+        const requestData = {
+          clerkId: currentUser.id,
+          email: currentUser.email,
+          firstName: currentUser.firstName,
+          lastName: currentUser.lastName,
+          authProvider: user.primaryEmailAddress?.emailAddress ? 'email' : 'social',
+          signUpMethod: 'clerk',
+          subscriptionStatus: 'free'
+        };
+
+        const response = await fetch(`${API_URL}/api/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestData)
+        });
+
+        const result = await response.json();
+        console.log('备用方案成功保存用户数据:', result);
+      } catch (backupError) {
+        console.error('备用方案也失败了:', backupError);
+      }
     }
 
     return currentUser;

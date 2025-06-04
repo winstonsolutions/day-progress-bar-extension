@@ -76,19 +76,24 @@ async function openSignInModal() {
   // 我们将扩展ID和回调路径作为参数传递
   const redirectorUrl = 'https://day-progress-bar-backend-production.up.railway.app/auth/clerk-redirect';
 
+  // 强制重定向URL - 用于开发模式时绕过Clerk的默认行为
+  const forceRedirectUrl = 'https://day-progress-bar-backend-production.up.railway.app/dashboard';
+
   // 构建认证URL - 使用后端重定向器作为回调
   const authUrl = `${CLERK_BASE_URL}/sign-in` +
                  `?redirect_url=${encodeURIComponent(redirectorUrl)}` +
                  `&after_sign_in_url=${encodeURIComponent(redirectorUrl)}` +
                  `&after_sign_up_url=${encodeURIComponent(redirectorUrl)}` +
                  `&extension_id=${extensionId}` + // 传递扩展ID
-                 `&extension_callback=auth-callback.html`; // 传递回调页面路径
+                 `&extension_callback=auth-callback.html` + // 传递回调页面路径
+                 `&force_redirect_url=${encodeURIComponent(forceRedirectUrl)}`; // 强制重定向URL
 
   console.log('打开认证URL:', authUrl);
 
   // 在控制台输出配置信息
   console.log('请确保在Clerk dashboard中添加了以下配置:');
   console.log(`- 已允许的重定向URL: ${redirectorUrl}`);
+  console.log(`- 强制重定向URL: ${forceRedirectUrl}`);
 
   // 重要：在打开认证页面前，存储一个状态标记
   await chrome.storage.local.set({

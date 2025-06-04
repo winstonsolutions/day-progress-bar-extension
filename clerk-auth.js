@@ -68,8 +68,13 @@ async function openSignInModal() {
   const callbackUrl = chrome.runtime.getURL('auth-callback.html');
   console.log('认证回调URL:', callbackUrl);
 
-  // 更明确地构建认证URL，确保带有正确的参数
-  const authUrl = `${CLERK_BASE_URL}/sign-in?redirect_url=${encodeURIComponent(callbackUrl)}`;
+  // 使用Clerk推荐的参数名称
+  // 尝试同时使用redirect_uri和redirect_url以提高兼容性
+  const authUrl = `${CLERK_BASE_URL}/sign-in` +
+                 `?redirect_uri=${encodeURIComponent(callbackUrl)}` +
+                 `&redirect_url=${encodeURIComponent(callbackUrl)}` +
+                 `&after_sign_in_url=${encodeURIComponent(callbackUrl)}` +
+                 `&after_sign_up_url=${encodeURIComponent(callbackUrl)}`;
 
   console.log('Opening auth URL:', authUrl);
 

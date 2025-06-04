@@ -1,5 +1,5 @@
 // Import the Clerk authentication module
-import { initClerk, openSignInModal, getCurrentUser, isAuthenticated } from './clerk-auth.js';
+import { initClerk, openSignInModal, getCurrentUser, isAuthenticated, signOut } from './clerk-auth.js';
 
 // 当弹出界面加载时，初始化按钮状态
 document.addEventListener('DOMContentLoaded', async function() {
@@ -47,12 +47,36 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (loginBtn) {
     loginBtn.addEventListener('click', async function() {
       try {
-        const user = await openSignInModal();
-        if (user) {
-          updateAuthenticationUI();
-        }
+        console.log('Login button clicked, opening sign-in modal...');
+
+        // Show loading state on button
+        loginBtn.textContent = 'Loading...';
+        loginBtn.disabled = true;
+
+        // Open the sign-in modal in a new tab
+        await openSignInModal();
+
+        // Reset button after open
+        loginBtn.textContent = 'Sign In / Create Account';
+        loginBtn.disabled = false;
+
+        // Note: Authentication state will be updated when the user comes back to this page
+        // after completing the auth flow and closing the auth tab
       } catch (error) {
         console.error('Login failed:', error);
+        alert('Failed to open authentication page. Please try again.');
+
+        // Reset button
+        loginBtn.textContent = 'Sign In / Create Account';
+        loginBtn.disabled = false;
+      }
+    });
+
+    // Check if we're returning from an auth flow - look for storage changes
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'local' && (changes.clerkToken || changes.clerkUser)) {
+        console.log('Auth data changed, updating UI');
+        updateAuthenticationUI();
       }
     });
   }
@@ -78,6 +102,7 @@ async function updateAuthenticationUI() {
   if (isAuthenticated()) {
     // 用户已登录
     const user = getCurrentUser();
+    console.log('User is authenticated:', user);
 
     // 更新用户信息
     if (userNameElement && user) {
@@ -110,6 +135,7 @@ async function updateAuthenticationUI() {
     if (loggedInSection) loggedInSection.classList.remove('hidden');
   } else {
     // 用户未登录
+    console.log('User is not authenticated');
     if (notLoggedInSection) notLoggedInSection.classList.remove('hidden');
     if (loggedInSection) loggedInSection.classList.add('hidden');
   }

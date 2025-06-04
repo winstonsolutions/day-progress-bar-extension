@@ -35,12 +35,36 @@
       background-color: #f8d7da;
       color: #721c24;
     }
+    .debug-info {
+      text-align: left;
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #666;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      display: none;
+    }
+    .show-debug {
+      margin-top: 10px;
+      background: none;
+      border: 1px solid #ccc;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Authentication</h1>
     <div id="message" class="message">Processing your authentication...</div>
+    <button id="show-debug" class="show-debug">Show Debug Info</button>
+    <div id="debug-info" class="debug-info"></div>
   </div>
 
   <script type="module">
@@ -48,53 +72,112 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       const messageEl = document.getElementById('message');
+      const debugInfoEl = document.getElementById('debug-info');
+      const showDebugBtn = document.getElementById('show-debug');
+
+      // Debug info container
+      let debugInfo = {
+        url: window.location.href,
+        search: window.location.search,
+        timestamp: new Date().toISOString(),
+        steps: []
+      };
+
+      // Toggle debug info visibility
+      showDebugBtn.addEventListener('click', () => {
+        debugInfoEl.style.display = debugInfoEl.style.display === 'block' ? 'none' : 'block';
+      });
+
+      function addDebugStep(step, data = null) {
+        debugInfo.steps.push({
+          step,
+          time: new Date().toISOString(),
+          ...(data && { data })
+        });
+        debugInfoEl.textContent = JSON.stringify(debugInfo, null, 2);
+      }
+
+      addDebugStep('Callback page loaded');
 
       try {
         // Get token and user info from URL params
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('__clerk_token');
 
+        addDebugStep('Parsed URL parameters', { hasToken: !!token });
+
         if (!token) {
-          throw new Error('No authentication token found');
+          addDebugStep('Token not found in URL');
+          throw new Error('No authentication token found. Make sure your Clerk domain is correctly configured.');
         }
+
+        addDebugStep('Fetching user information from Clerk API');
 
         // Get user info from Clerk API
-        const userResponse = await fetch('https://api.clerk.dev/v1/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+        try {
+          const userResponse = await fetch('https://api.clerk.dev/v1/me', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          addDebugStep('Clerk API response received', {
+            status: userResponse.status,
+            ok: userResponse.ok
+          });
+
+          if (!userResponse.ok) {
+            const errorText = await userResponse.text();
+            addDebugStep('API response error', {
+              status: userResponse.status,
+              error: errorText
+            });
+            throw new Error(`Failed to get user information (Status: ${userResponse.status})`);
           }
-        });
 
-        if (!userResponse.ok) {
-          throw new Error('Failed to get user information');
-        }
+          const userData = await userResponse.json();
+          addDebugStep('User data received', { userId: userData.id });
 
-        const userData = await userResponse.json();
+          // Process the authentication
+          addDebugStep('Processing authentication with handleAuthCallback');
+          const user = await handleAuthCallback(token, {
+            id: userData.id,
+            email: userData.email_addresses[0]?.email_address,
+            firstName: userData.first_name,
+            lastName: userData.last_name
+          });
 
-        // Process the authentication
-        const user = await handleAuthCallback(token, {
-          id: userData.id,
-          email: userData.email_addresses[0]?.email_address,
-          firstName: userData.first_name,
-          lastName: userData.last_name
-        });
+          if (user) {
+            addDebugStep('Authentication successful', {
+              userId: user.id,
+              email: user.email
+            });
 
-        if (user) {
-          messageEl.textContent = 'Authentication successful! You can close this tab now.';
-          messageEl.className = 'message success';
+            messageEl.textContent = 'Authentication successful! You can close this tab now.';
+            messageEl.className = 'message success';
 
-          // Close this tab after a short delay
-          setTimeout(() => {
-            window.close();
-          }, 3000);
-        } else {
-          throw new Error('Failed to process authentication');
+            // Close this tab after a short delay
+            setTimeout(() => {
+              window.close();
+            }, 3000);
+          } else {
+            addDebugStep('handleAuthCallback returned null');
+            throw new Error('Failed to process authentication');
+          }
+        } catch (fetchError) {
+          addDebugStep('Fetch error', { message: fetchError.message });
+          throw fetchError;
         }
       } catch (error) {
         console.error('Authentication error:', error);
+        addDebugStep('Authentication error', { message: error.message });
+
         messageEl.textContent = `Authentication failed: ${error.message}`;
         messageEl.className = 'message error';
+
+        // Show debug info automatically on error
+        debugInfoEl.style.display = 'block';
       }
     });
   </script>

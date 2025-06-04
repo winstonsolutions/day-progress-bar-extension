@@ -26,7 +26,14 @@
   ],
   "permissions": ["storage", "identity", "notifications", "contextMenus", "tabs"],
   "optional_permissions": [],
-  "host_permissions": ["https://*.googleapis.com/", "https://day-progress-bar-backend-production.up.railway.app/", "https://clerk.accounts.dev/", "https://accounts.clerk.dev/", "https://api.clerk.dev/"],
+  "host_permissions": [
+    "https://*.googleapis.com/",
+    "https://day-progress-bar-backend-production.up.railway.app/",
+    "https://*.clerk.accounts.dev/",
+    "https://clerk.accounts.dev/",
+    "https://accounts.clerk.dev/",
+    "https://api.clerk.dev/"
+  ],
   "background": {
     "service_worker": "background.js"
   },
@@ -38,7 +45,20 @@
     "scopes": ["https://www.googleapis.com/auth/userinfo.email"]
   },
   "web_accessible_resources": [{
-    "resources": ["subscription.html", "subscription.js", "payment.html", "payment.js", "api.js", "mock-stripe.html", "popup.html", "popup.js", "account.html", "account.js", "auth-callback.html"],
+    "resources": [
+      "subscription.html",
+      "subscription.js",
+      "payment.html",
+      "payment.js",
+      "api.js",
+      "mock-stripe.html",
+      "popup.html",
+      "popup.js",
+      "account.html",
+      "account.js",
+      "auth-callback.html",
+      "CLERK_SETUP_GUIDE.html"
+    ],
     "matches": ["<all_urls>"]
   }]
 }

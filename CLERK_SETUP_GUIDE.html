@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clerk Setup Guide for Day Progress Bar Extension</title>
+  <style>
+    body {
+      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      color: #202124;
+      background-color: #f8f9fa;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #1a73e8;
+      margin-top: 0;
+    }
+    h2 {
+      color: #202124;
+      margin-top: 30px;
+      font-size: 1.5em;
+    }
+    code {
+      background-color: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+    .code-block {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .important {
+      background-color: #e8f0fe;
+      border-left: 4px solid #1a73e8;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    ol, ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 10px;
+    }
+    img {
+      max-width: 100%;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      margin: 15px 0;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #1a73e8;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 500;
+      margin-top: 20px;
+    }
+    .btn:hover {
+      background-color: #1765cc;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Clerk Setup Guide for Day Progress Bar Extension</h1>
+
+    <div class="important">
+      <strong>Important:</strong> This guide will help you correctly set up Clerk authentication for the Day Progress Bar extension.
+    </div>
+
+    <h2>1. Create a Clerk Account</h2>
+    <ol>
+      <li>Go to <a href="https://clerk.dev" target="_blank">https://clerk.dev</a> and sign up for a free account if you haven't already.</li>
+      <li>Once logged in, create a new application from the dashboard.</li>
+    </ol>
+
+    <h2>2. Set Up Your Clerk Application</h2>
+    <ol>
+      <li>From your Clerk dashboard, select your application.</li>
+      <li>Go to the "API Keys" section to find your Publishable Key and Secret Key.</li>
+      <li>Copy your Publishable Key (starts with <code>pk_test_</code> or <code>pk_live_</code>).</li>
+    </ol>
+
+    <h2>3. Configure URLs in Clerk</h2>
+    <p>This is the most important step to fix the 404 error:</p>
+    <ol>
+      <li>In your Clerk dashboard, go to <strong>Authentication → JWT Templates</strong>.</li>
+      <li>Make sure the default JWT Template is properly configured.</li>
+      <li>Go to <strong>Authentication → URL Configuration</strong>.</li>
+      <li>Under "Authorized URLs", add the following URLs:
+        <div class="code-block">chrome-extension://YOUR_EXTENSION_ID/*</div>
+        Replace YOUR_EXTENSION_ID with your actual extension ID. You can find this in your browser's extension page.
+      </li>
+      <li>Under "Redirect URLs", add:
+        <div class="code-block">chrome-extension://YOUR_EXTENSION_ID/auth-callback.html</div>
+      </li>
+      <li>Save your changes.</li>
+    </ol>
+
+    <h2>4. Update Your Extension Configuration</h2>
+    <ol>
+      <li>Open the <code>clerk-auth.js</code> file in your extension code.</li>
+      <li>Update the following constants with your Clerk information:
+        <div class="code-block">// Constants
+const CLERK_PUBLISHABLE_KEY = 'YOUR_PUBLISHABLE_KEY'; // Replace with your actual key
+const CLERK_BASE_URL = 'YOUR_CLERK_FRONTEND_API'; // e.g., https://your-app.clerk.accounts.dev</div>
+      </li>
+      <li>Save the file and reload your extension.</li>
+    </ol>
+
+    <h2>Troubleshooting</h2>
+    <p>If you're still seeing a 404 error:</p>
+    <ul>
+      <li>Verify that your Clerk domain is correct. It should be in the format <code>https://your-app.clerk.accounts.dev</code></li>
+      <li>Make sure all URLs in Clerk's dashboard are correctly configured with your extension ID</li>
+      <li>Check that your Publishable Key is valid and correctly copied</li>
+      <li>Try opening the auth-callback.html page directly and check the debug information</li>
+    </ul>
+
+    <h2>Need Help?</h2>
+    <p>If you're still having issues, refer to Clerk's documentation on authenticating users in Chrome extensions:</p>
+    <a href="https://clerk.dev/docs" target="_blank" class="btn">Clerk Documentation</a>
+  </div>
+</body>
+</html>

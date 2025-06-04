@@ -7,7 +7,7 @@ import { API_BASE_URL } from './api.js';
 
 // Constants
 const CLERK_PUBLISHABLE_KEY = 'pk_test_Z2xhZC10cm91dC0yNC5jbGVyay5hY2NvdW50cy5kZXYk'; // Replace with your actual key
-const CLERK_BASE_URL = 'https://glad-trout-24.clerk.accounts.dev'; // Replace with your Clerk domain
+const CLERK_BASE_URL = 'https://clerk.accounts.dev'; // Updated Clerk domain
 const CLERK_API_URL = 'https://api.clerk.dev/v1';
 
 // Store user data
@@ -63,8 +63,10 @@ async function verifyToken(token) {
  * @returns {Promise<Object|null>} User data if sign-in successful, null otherwise
  */
 async function openSignInModal() {
-  // Create a sign-in URL
+  // Create a sign-in URL with your Frontend API
   const authUrl = `${CLERK_BASE_URL}/sign-in?redirect_url=${encodeURIComponent(chrome.runtime.getURL('auth-callback.html'))}`;
+
+  console.log('Opening auth URL:', authUrl);
 
   // Open auth in a new tab/window
   chrome.tabs.create({ url: authUrl });

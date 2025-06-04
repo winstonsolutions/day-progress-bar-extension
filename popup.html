@@ -4,7 +4,7 @@
   <title>Day Progress Bar</title>
   <style>
     body {
-      width: 200px;
+      width: 300px;
       padding: 15px;
       font-family: 'Google Sans', Roboto, Arial, sans-serif;
     }
@@ -42,12 +42,89 @@
     .secondary-btn:hover {
       background-color: #e3e5e8;
     }
+    .account-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #e8eaed;
+    }
+    .account-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: #e8eaed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      color: #5f6368;
+      font-weight: bold;
+    }
+    .user-details {
+      flex-grow: 1;
+    }
+    .user-name {
+      font-weight: 500;
+      font-size: 14px;
+      color: #202124;
+    }
+    .user-status {
+      font-size: 12px;
+      color: #5f6368;
+    }
+    .pro-badge {
+      font-size: 10px;
+      background-color: #1a73e8;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 5px;
+    }
+    .free-badge {
+      font-size: 10px;
+      background-color: #5f6368;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 5px;
+    }
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
   <h1>Day Progress Bar</h1>
   <button id="toggle-btn" class="secondary-btn">Show Progress Bar</button>
 
-  <script src="popup.js"></script>
+  <!-- Account Section -->
+  <div class="account-section">
+    <!-- Not Logged In State -->
+    <div id="not-logged-in" class="hidden">
+      <button id="login-btn" class="primary-btn">Sign In / Create Account</button>
+    </div>
+
+    <!-- Logged In State -->
+    <div id="logged-in" class="hidden">
+      <div class="account-info">
+        <div class="user-avatar" id="user-avatar">U</div>
+        <div class="user-details">
+          <div class="user-name" id="user-name">User Name</div>
+          <div class="user-status">
+            Status: <span id="subscription-status">Free</span>
+            <span id="pro-badge" class="pro-badge hidden">PRO</span>
+            <span id="free-badge" class="free-badge hidden">FREE</span>
+          </div>
+        </div>
+      </div>
+      <button id="account-btn" class="secondary-btn">Manage Account</button>
+    </div>
+  </div>
+
+  <script src="popup.js" type="module"></script>
 </body>
 </html>

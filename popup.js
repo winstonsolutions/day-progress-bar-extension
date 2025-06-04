@@ -1,6 +1,21 @@
+// Import the Clerk authentication module
+import { initClerk, openSignInModal, getCurrentUser, isAuthenticated } from './clerk-auth.js';
+
 // 当弹出界面加载时，初始化按钮状态
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   const toggleBtn = document.getElementById('toggle-btn');
+  const loginBtn = document.getElementById('login-btn');
+  const accountBtn = document.getElementById('account-btn');
+  const notLoggedInSection = document.getElementById('not-logged-in');
+  const loggedInSection = document.getElementById('logged-in');
+
+  // 初始化Clerk
+  try {
+    await initClerk();
+    updateAuthenticationUI();
+  } catch (error) {
+    console.error('Failed to initialize Clerk:', error);
+  }
 
   // 获取当前进度条隐藏状态
   chrome.storage.sync.get(['dayProgressBarHidden'], function(result) {
@@ -27,7 +42,87 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   });
+
+  // 登录按钮点击事件
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async function() {
+      try {
+        const user = await openSignInModal();
+        if (user) {
+          updateAuthenticationUI();
+        }
+      } catch (error) {
+        console.error('Login failed:', error);
+      }
+    });
+  }
+
+  // 账户管理按钮点击事件
+  if (accountBtn) {
+    accountBtn.addEventListener('click', function() {
+      chrome.tabs.create({ url: chrome.runtime.getURL('account.html') });
+    });
+  }
 });
+
+// 更新认证状态UI
+async function updateAuthenticationUI() {
+  const notLoggedInSection = document.getElementById('not-logged-in');
+  const loggedInSection = document.getElementById('logged-in');
+  const userNameElement = document.getElementById('user-name');
+  const userAvatarElement = document.getElementById('user-avatar');
+  const subscriptionStatusElement = document.getElementById('subscription-status');
+  const proBadgeElement = document.getElementById('pro-badge');
+  const freeBadgeElement = document.getElementById('free-badge');
+
+  if (isAuthenticated()) {
+    // 用户已登录
+    const user = getCurrentUser();
+
+    // 更新用户信息
+    if (userNameElement && user) {
+      userNameElement.textContent = user.firstName || user.email.split('@')[0];
+    }
+
+    if (userAvatarElement && user) {
+      const initial = (user.firstName || user.email).charAt(0).toUpperCase();
+      userAvatarElement.textContent = initial;
+    }
+
+    // 获取订阅状态
+    const subscriptionData = await getSubscriptionData();
+    const isProUser = subscriptionData.status === 'active' || subscriptionData.status === 'trial';
+
+    if (subscriptionStatusElement) {
+      if (isProUser) {
+        subscriptionStatusElement.textContent = 'Premium';
+        if (proBadgeElement) proBadgeElement.classList.remove('hidden');
+        if (freeBadgeElement) freeBadgeElement.classList.add('hidden');
+      } else {
+        subscriptionStatusElement.textContent = 'Free';
+        if (proBadgeElement) proBadgeElement.classList.add('hidden');
+        if (freeBadgeElement) freeBadgeElement.classList.remove('hidden');
+      }
+    }
+
+    // 显示已登录区域，隐藏未登录区域
+    if (notLoggedInSection) notLoggedInSection.classList.add('hidden');
+    if (loggedInSection) loggedInSection.classList.remove('hidden');
+  } else {
+    // 用户未登录
+    if (notLoggedInSection) notLoggedInSection.classList.remove('hidden');
+    if (loggedInSection) loggedInSection.classList.add('hidden');
+  }
+}
+
+// 获取订阅状态
+async function getSubscriptionData() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['subscription'], function(result) {
+      resolve(result.subscription || { status: 'free' });
+    });
+  });
+}
 
 // 向活动标签页发送消息的函数
 function updateActiveTab(hidden) {

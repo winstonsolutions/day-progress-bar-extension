@@ -38,7 +38,7 @@
     "scopes": ["https://www.googleapis.com/auth/userinfo.email"]
   },
   "web_accessible_resources": [{
-    "resources": ["subscription.html", "subscription.js", "payment.html", "payment.js", "api.js", "mock-stripe.html", "popup.html", "popup.js", "auth-callback.html"],
+    "resources": ["subscription.html", "subscription.js", "payment.html", "payment.js", "api.js", "mock-stripe.html", "popup.html", "popup.js", "account.html", "account.js", "auth-callback.html"],
     "matches": ["<all_urls>"]
   }]
 }

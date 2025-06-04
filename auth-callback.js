@@ -53,7 +53,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   addDebugStep('Callback page loaded');
 
+  // 添加重要的信息日志
+  addDebugStep('环境信息', {
+    extensionId: chrome.runtime.id,
+    userAgent: navigator.userAgent,
+    url: window.location.href,
+    referrer: document.referrer || '无引荐来源'
+  });
+
   try {
+    // 如果是从中间重定向页面来的，记录下来
+    if (document.referrer && document.referrer.includes('day-progress-bar-backend-production.up.railway.app')) {
+      addDebugStep('来自中间重定向页面', { referrer: document.referrer });
+    }
+
     // Get token and user info from URL params
     const urlParams = new URLSearchParams(window.location.search);
 

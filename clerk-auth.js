@@ -64,30 +64,31 @@ async function verifyToken(token) {
  * @returns {Promise<Object|null>} User data if sign-in successful, null otherwise
  */
 async function openSignInModal() {
-  // Create a sign-in URL with your Frontend API
-  const callbackUrl = chrome.runtime.getURL('auth-callback.html');
-  console.log('认证回调URL:', callbackUrl);
-
-  // 获取扩展ID用于调试
+  // 获取扩展ID，用于构建回调参数
   const extensionId = chrome.runtime.id;
   console.log('扩展ID:', extensionId);
 
-  // 更新后的URL构建，使用Clerk最新推荐的参数格式
+  // 使用扩展ID作为参数，构建真正的回调URL
+  const actualCallbackUrl = chrome.runtime.getURL('auth-callback.html');
+  console.log('真实回调URL:', actualCallbackUrl);
+
+  // 使用API后端部署的中间重定向页面
+  // 我们将扩展ID和回调路径作为参数传递
+  const redirectorUrl = 'https://day-progress-bar-backend-production.up.railway.app/auth/clerk-redirect';
+
+  // 构建认证URL - 使用后端重定向器作为回调
   const authUrl = `${CLERK_BASE_URL}/sign-in` +
-                 `?redirect_url=${encodeURIComponent(callbackUrl)}` +
-                 `&after_sign_in_url=${encodeURIComponent(callbackUrl)}` +
-                 `&after_sign_up_url=${encodeURIComponent(callbackUrl)}` +
-                 `&_clerk_js_version=4` +  // 指定Clerk JS版本
-                 `&_clerk_callback=true` +  // 确保Clerk知道这是回调
-                 `&client_id=${extensionId}`; // 添加扩展ID作为客户端ID
+                 `?redirect_url=${encodeURIComponent(redirectorUrl)}` +
+                 `&after_sign_in_url=${encodeURIComponent(redirectorUrl)}` +
+                 `&after_sign_up_url=${encodeURIComponent(redirectorUrl)}` +
+                 `&extension_id=${extensionId}` + // 传递扩展ID
+                 `&extension_callback=auth-callback.html`; // 传递回调页面路径
 
   console.log('打开认证URL:', authUrl);
 
-  // 在控制台输出扩展ID，以便确认正确的授权配置
-  console.log('当前扩展ID:', extensionId);
+  // 在控制台输出配置信息
   console.log('请确保在Clerk dashboard中添加了以下配置:');
-  console.log(`- 已允许的重定向URL: chrome-extension://${extensionId}/auth-callback.html`);
-  console.log(`- 已允许的源: chrome-extension://${extensionId}`);
+  console.log(`- 已允许的重定向URL: ${redirectorUrl}`);
 
   // 重要：在打开认证页面前，存储一个状态标记
   await chrome.storage.local.set({
@@ -98,8 +99,8 @@ async function openSignInModal() {
   // Open auth in a new tab/window
   chrome.tabs.create({ url: authUrl });
 
-  // The actual authentication will be handled by the auth-callback.html page
-  // which will receive the token and store it
+  // 监听消息，以处理重定向后的认证结果
+  // 这部分已经在background.js中处理了
 
   // Return null for now, the actual user info will be available after the callback completes
   return null;

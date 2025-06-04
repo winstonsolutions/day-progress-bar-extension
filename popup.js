@@ -1,5 +1,5 @@
 // Import the Clerk authentication module
-import { initClerk, openSignInModal, getCurrentUser, isAuthenticated, signOut } from './clerk-auth.js';
+import { initClerk, openSignInModal, getCurrentUser, isAuthenticated, signOut, storeUserData } from './clerk-auth.js';
 import { testBackendConnection } from './api.js';
 
 // 当弹出界面加载时，初始化按钮状态
@@ -80,16 +80,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log('New user data:', changes.clerkUser?.newValue);
         updateAuthenticationUI();
 
-        // 登录成功后，尝试确认用户数据已保存到MongoDB
+        // 登录成功后，保存用户数据到MongoDB
         if (changes.clerkUser?.newValue) {
           const userData = changes.clerkUser.newValue;
-          console.log('尝试确认用户数据已保存到MongoDB:', userData);
+          console.log('保存用户数据到MongoDB:', userData);
 
-          // 利用测试后端连接函数检查连接状态
-          testBackendConnection().then(result => {
-            console.log('后端测试结果:', result);
+          storeUserData(userData).then(result => {
+            console.log('用户数据已保存:', result);
           }).catch(error => {
-            console.error('测试后端连接失败:', error);
+            console.error('保存用户数据失败:', error);
           });
         }
       }

@@ -79,7 +79,7 @@ async function openSignInModal() {
   console.log('Opening auth URL:', authUrl);
 
   // 在控制台输出扩展ID，以便确认正确的授权配置
-  console.log('当前扩展ID:', chrome.runtime.id);
+  console.log('TTT当前扩展ID:', chrome.runtime.id);
   console.log('请确保在Clerk dashboard中添加了以下URL:');
   console.log(`- Authorized URL: chrome-extension://${chrome.runtime.id}/*`);
   console.log(`- Redirect URL: chrome-extension://${chrome.runtime.id}/auth-callback.html`);

@@ -112,20 +112,55 @@ async function handleAuthCallback(token, user) {
       console.error('Chrome本地存储失败:', storageError);
     }
 
-    // Store user data in MongoDB
+    // 修改: 直接保存用户数据到 MongoDB，不依赖 storeUserData 函数的认证检查
     try {
-      console.log('开始调用storeUserData函数...');
-      const userData = {
+      console.log('===== 登录成功，直接保存用户数据到MongoDB =====');
+
+      // 确保API_BASE_URL可用，优先使用全局window变量
+      const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+
+      // 准备用户数据
+      const requestData = {
+        clerkId: currentUser.id,
+        email: currentUser.email,
         firstName: currentUser.firstName,
         lastName: currentUser.lastName,
+        authProvider: user.primaryEmailAddress?.emailAddress ? 'email' : 'social',
+        signUpMethod: 'clerk',
         subscriptionStatus: 'free' // Default to free subscription
       };
-      console.log('准备存储的用户数据:', userData);
 
-      const result = await storeUserData(userData);
-      console.log('MongoDB存储结果:', result);
+      console.log('准备发送到API的用户数据:', requestData);
+      console.log('API端点:', `${API_URL}/api/users`);
+
+      // 直接调用API
+      const response = await fetch(`${API_URL}/api/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      const responseText = await response.text();
+      let responseData;
+
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        responseData = { text: responseText };
+      }
+
+      console.log('API响应状态:', response.status, response.statusText);
+      console.log('API响应数据:', responseData);
+
+      if (!response.ok) {
+        throw new Error(`API错误 ${response.status}: ${JSON.stringify(responseData)}`);
+      }
+
+      console.log('✅ 用户数据成功保存到MongoDB');
     } catch (error) {
-      console.error('存储用户数据到MongoDB失败 (handleAuthCallback):', error);
+      console.error('❌ 保存用户数据到MongoDB失败:', error);
       console.error('错误详情:', error.stack || error);
       // Continue with authentication even if MongoDB storage fails
     }

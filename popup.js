@@ -1,5 +1,6 @@
 // Import the Clerk authentication module
 import { initClerk, openSignInModal, getCurrentUser, isAuthenticated, signOut } from './clerk-auth.js';
+import { testBackendConnection } from './api.js';
 
 // 当弹出界面加载时，初始化按钮状态
 document.addEventListener('DOMContentLoaded', async function() {
@@ -87,6 +88,30 @@ document.addEventListener('DOMContentLoaded', async function() {
       chrome.tabs.create({ url: chrome.runtime.getURL('account.html') });
     });
   }
+
+  // 绑定调试工具事件
+  const testBackendButton = document.getElementById('test-backend-button');
+  const debugInfoElement = document.getElementById('debug-info');
+
+  // 测试后端连接按钮
+  testBackendButton.addEventListener('click', async () => {
+    testBackendButton.disabled = true;
+    testBackendButton.textContent = 'Testing...';
+    debugInfoElement.style.display = 'block';
+    debugInfoElement.textContent = 'Testing backend connection...';
+
+    try {
+      const result = await testBackendConnection();
+      console.log('后端连接测试结果:', result);
+      debugInfoElement.textContent = JSON.stringify(result, null, 2);
+    } catch (error) {
+      console.error('测试后端连接失败:', error);
+      debugInfoElement.textContent = `测试失败: ${error.message}\n${error.stack || ''}`;
+    } finally {
+      testBackendButton.disabled = false;
+      testBackendButton.textContent = 'Test Backend Connection';
+    }
+  });
 });
 
 // 更新认证状态UI

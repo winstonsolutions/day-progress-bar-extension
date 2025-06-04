@@ -154,11 +154,79 @@ async function verifyPaymentStatus(transactionId) {
   return await response.json();
 }
 
+/**
+ * 测试后端API连接和MongoDB状态
+ * @returns {Promise<Object>} 后端状态信息
+ */
+async function testBackendConnection() {
+  try {
+    console.log('正在测试后端连接...');
+    // 先测试基础API
+    const rootResponse = await fetch(`${API_BASE_URL}/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!rootResponse.ok) {
+      throw new Error(`API根路径请求失败: ${rootResponse.status} ${rootResponse.statusText}`);
+    }
+
+    const rootData = await rootResponse.json();
+    console.log('API根路径响应:', rootData);
+
+    // 测试用户创建API
+    const testUserData = {
+      clerkId: `test-${Date.now()}`,
+      email: `test-${Date.now()}@example.com`,
+      firstName: 'Test',
+      lastName: 'User'
+    };
+
+    console.log('尝试创建测试用户:', testUserData);
+    const userResponse = await fetch(`${API_BASE_URL}/api/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testUserData)
+    });
+
+    const userData = await userResponse.text();
+    let parsedUserData;
+    try {
+      parsedUserData = JSON.parse(userData);
+    } catch (e) {
+      console.error('无法解析用户API响应为JSON');
+    }
+
+    return {
+      apiStatus: rootData,
+      userApiStatus: {
+        statusCode: userResponse.status,
+        statusText: userResponse.statusText,
+        success: userResponse.ok,
+        data: parsedUserData || userData
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('后端连接测试失败:', error);
+    return {
+      error: error.message,
+      timestamp: new Date().toISOString(),
+      stack: error.stack
+    };
+  }
+}
+
 // 导出所有API函数
 export {
   API_BASE_URL,
   createCheckoutSession,
   verifyLicense,
   requestLicenseKey,
-  verifyPaymentStatus
+  verifyPaymentStatus,
+  testBackendConnection
 };

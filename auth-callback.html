@@ -43,10 +43,10 @@
       border-radius: 4px;
       font-size: 12px;
       color: #666;
-      max-height: 200px;
+      max-height: 400px;
       overflow-y: auto;
       white-space: pre-wrap;
-      display: none;
+      display: block;
     }
     .show-debug {
       margin-top: 10px;
@@ -57,14 +57,28 @@
       cursor: pointer;
       font-size: 12px;
     }
+    .close-button {
+      margin-top: 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .close-button:hover {
+      background-color: #0069d9;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Authentication</h1>
     <div id="message" class="message">Processing your authentication...</div>
-    <button id="show-debug" class="show-debug">Show Debug Info</button>
+    <button id="show-debug" class="show-debug">Toggle Debug Info</button>
     <div id="debug-info" class="debug-info"></div>
+    <button id="close-tab" class="close-button" style="display: none;">Close This Tab</button>
   </div>
 
   <script type="module">
@@ -74,12 +88,14 @@
       const messageEl = document.getElementById('message');
       const debugInfoEl = document.getElementById('debug-info');
       const showDebugBtn = document.getElementById('show-debug');
+      const closeTabBtn = document.getElementById('close-tab');
 
       // Debug info container
       let debugInfo = {
         url: window.location.href,
         search: window.location.search,
         timestamp: new Date().toISOString(),
+        extensionId: chrome.runtime.id,
         steps: []
       };
 
@@ -88,12 +104,22 @@
         debugInfoEl.style.display = debugInfoEl.style.display === 'block' ? 'none' : 'block';
       });
 
+      // Close tab button
+      closeTabBtn.addEventListener('click', () => {
+        window.close();
+      });
+
       function addDebugStep(step, data = null) {
-        debugInfo.steps.push({
+        const stepInfo = {
           step,
           time: new Date().toISOString(),
           ...(data && { data })
-        });
+        };
+        debugInfo.steps.push(stepInfo);
+
+        // 添加到控制台便于调试
+        console.log(`[DEBUG] ${step}`, data || '');
+
         debugInfoEl.textContent = JSON.stringify(debugInfo, null, 2);
       }
 
@@ -137,7 +163,12 @@
           }
 
           const userData = await userResponse.json();
-          addDebugStep('User data received', { userId: userData.id });
+          addDebugStep('User data received', {
+            userId: userData.id,
+            email: userData.email_addresses[0]?.email_address,
+            firstName: userData.first_name,
+            lastName: userData.last_name
+          });
 
           // Process the authentication
           addDebugStep('Processing authentication with handleAuthCallback');
@@ -154,13 +185,11 @@
               email: user.email
             });
 
-            messageEl.textContent = 'Authentication successful! You can close this tab now.';
+            messageEl.textContent = 'Authentication successful! You can now check the debug info or close this tab.';
             messageEl.className = 'message success';
 
-            // Close this tab after a short delay
-            setTimeout(() => {
-              window.close();
-            }, 3000);
+            // 显示关闭按钮而不是自动关闭
+            closeTabBtn.style.display = 'inline-block';
           } else {
             addDebugStep('handleAuthCallback returned null');
             throw new Error('Failed to process authentication');

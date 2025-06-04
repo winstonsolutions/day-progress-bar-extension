@@ -159,31 +159,64 @@ async function signOut() {
  */
 async function storeUserData(userData) {
   if (!isAuthenticated()) {
+    console.error('存储用户数据失败: 用户未认证');
     throw new Error('User must be authenticated to store data');
   }
 
   try {
+    console.log('===== 开始存储用户数据到MongoDB =====');
+    console.log('API_BASE_URL:', API_BASE_URL);
+    console.log('API端点:', `${API_BASE_URL}/api/users`);
+    console.log('用户数据:', {
+      clerkId: currentUser.id,
+      email: currentUser.email,
+      ...userData
+    });
+
+    // 移除Authorization头，使用查询参数传递clerkToken可能会解决CORS预检问题
+    // 或者使用更简单的JSON格式来避免可能的问题
     const response = await fetch(`${API_BASE_URL}/api/users`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${clerkToken}`
       },
       body: JSON.stringify({
         clerkId: currentUser.id,
         email: currentUser.email,
+        token: clerkToken, // 将token作为请求体的一部分而不是header
         ...userData
       })
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to store user data');
+    console.log('API响应状态:', response.status, response.statusText);
+
+    // 尝试获取响应体，无论成功与否
+    let responseBody;
+    try {
+      responseBody = await response.text();
+      console.log('API响应内容:', responseBody);
+
+      // 尝试将响应体解析为JSON
+      try {
+        responseBody = JSON.parse(responseBody);
+      } catch (e) {
+        console.log('响应不是JSON格式');
+      }
+    } catch (e) {
+      console.error('无法读取响应内容:', e);
     }
 
-    return await response.json();
+    if (!response.ok) {
+      console.error('存储用户数据API请求失败:', response.status, responseBody);
+      const errorMessage = responseBody?.message || 'Failed to store user data';
+      throw new Error(errorMessage);
+    }
+
+    console.log('用户数据成功存储到MongoDB:', responseBody);
+    return responseBody;
   } catch (error) {
-    console.error('Failed to store user data:', error);
+    console.error('存储用户数据到MongoDB过程中出错:', error.message);
+    console.error('错误详情:', error);
     throw error;
   }
 }

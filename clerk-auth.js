@@ -3,7 +3,8 @@
  * Handles user authentication using Clerk
  */
 
-import { API_BASE_URL } from './api.js';
+// 移除导入，使用全局变量
+// import { API_BASE_URL } from './api.js';
 
 // Constants
 const CLERK_PUBLISHABLE_KEY = 'pk_test_Z2xhZC10cm91dC0yNC5jbGVyay5hY2NvdW50cy5kZXYk'; // Replace with your actual key

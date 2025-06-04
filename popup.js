@@ -77,7 +77,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     chrome.storage.onChanged.addListener((changes, namespace) => {
       if (namespace === 'local' && (changes.clerkToken || changes.clerkUser)) {
         console.log('Auth data changed, updating UI');
+        console.log('New user data:', changes.clerkUser?.newValue);
         updateAuthenticationUI();
+
+        // 登录成功后，尝试确认用户数据已保存到MongoDB
+        if (changes.clerkUser?.newValue) {
+          const userData = changes.clerkUser.newValue;
+          console.log('尝试确认用户数据已保存到MongoDB:', userData);
+
+          // 利用测试后端连接函数检查连接状态
+          testBackendConnection().then(result => {
+            console.log('后端测试结果:', result);
+          }).catch(error => {
+            console.error('测试后端连接失败:', error);
+          });
+        }
       }
     });
   }

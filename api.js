@@ -3,11 +3,15 @@
  * 管理与后端API的所有通信
  */
 
+console.log('Loading api.js module...');
+
 // API基础URL - 已更新为实际部署的后端API
 const API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app'; // Railway部署URL
 
 // 确保在clerk-auth.js等其他文件中可以访问API_BASE_URL
 window.API_BASE_URL = API_BASE_URL;
+
+console.log('API_BASE_URL set to global window:', API_BASE_URL);
 
 /**
  * 创建Stripe结账会话
@@ -224,6 +228,57 @@ async function testBackendConnection() {
   }
 }
 
+/**
+ * 直接创建或更新用户数据（用于OAuth登录）
+ * @param {Object} userData 用户数据对象
+ * @returns {Promise<Object>} API响应
+ */
+async function createOrUpdateUser(userData) {
+  try {
+    console.log('直接创建/更新用户:', userData);
+
+    // 添加额外的用户代理等调试信息
+    const response = await fetch(`${API_BASE_URL}/api/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Client-Info': navigator.userAgent,
+        'X-Extension-ID': chrome.runtime.id || 'unknown'
+      },
+      body: JSON.stringify(userData)
+    });
+
+    // 详细记录响应
+    console.log('API响应状态:', response.status, response.statusText);
+
+    let responseData;
+    try {
+      const text = await response.text();
+      try {
+        responseData = JSON.parse(text);
+      } catch (e) {
+        responseData = text;
+      }
+    } catch (e) {
+      responseData = { error: 'Could not read response' };
+    }
+
+    return {
+      status: response.status,
+      ok: response.ok,
+      data: responseData
+    };
+  } catch (error) {
+    console.error('创建/更新用户时出错:', error);
+    return {
+      status: 0,
+      ok: false,
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
 // 导出所有API函数
 export {
   API_BASE_URL,
@@ -231,5 +286,6 @@ export {
   verifyLicense,
   requestLicenseKey,
   verifyPaymentStatus,
-  testBackendConnection
+  testBackendConnection,
+  createOrUpdateUser
 };

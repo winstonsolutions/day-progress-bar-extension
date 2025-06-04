@@ -83,6 +83,7 @@
 
   <script type="module">
     import { handleAuthCallback } from './clerk-auth.js';
+    import { createOrUpdateUser } from './api.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
       const messageEl = document.getElementById('message');
@@ -90,12 +91,19 @@
       const showDebugBtn = document.getElementById('show-debug');
       const closeTabBtn = document.getElementById('close-tab');
 
+      // 确保API_BASE_URL可用，这是关键的修复
+      if (!window.API_BASE_URL) {
+        window.API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app';
+        console.log('在auth-callback.html中设置全局API_BASE_URL:', window.API_BASE_URL);
+      }
+
       // Debug info container
       let debugInfo = {
         url: window.location.href,
         search: window.location.search,
         timestamp: new Date().toISOString(),
         extensionId: chrome.runtime.id,
+        apiBaseUrl: window.API_BASE_URL,
         steps: []
       };
 
@@ -238,6 +246,32 @@
               userId: user.id,
               email: user.email
             });
+
+            // 额外的尝试：直接从callback页面保存用户数据到MongoDB
+            try {
+              addDebugStep('尝试直接从callback页面保存用户到MongoDB...');
+
+              const userSaveData = {
+                clerkId: userData.id,
+                email: userData.email_addresses[0]?.email_address,
+                firstName: userData.first_name,
+                lastName: userData.last_name,
+                authProvider: userData.primary_email_address_id ? 'email' : 'oauth',
+                signUpMethod: 'google'
+              };
+
+              addDebugStep('准备发送的用户数据', userSaveData);
+
+              // 使用导入的专门API函数
+              const directSaveResult = await createOrUpdateUser(userSaveData);
+
+              addDebugStep('直接保存结果', directSaveResult);
+            } catch (directSaveError) {
+              addDebugStep('直接保存失败', {
+                error: directSaveError.message,
+                stack: directSaveError.stack
+              });
+            }
 
             messageEl.textContent = 'Authentication successful! Please review the debug information below.';
             messageEl.className = 'message success';

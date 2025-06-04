@@ -8,41 +8,29 @@ import { API_BASE_URL } from './api.js';
 // Constants
 const CLERK_PUBLISHABLE_KEY = 'pk_test_Z2xhZC10cm91dC0yNC5jbGVyay5hY2NvdW50cy5kZXYk'; // Replace with your actual key
 const CLERK_BASE_URL = 'https://glad-trout-24.clerk.accounts.dev'; // Replace with your Clerk domain
+const CLERK_API_URL = 'https://api.clerk.dev/v1';
 
 // Store user data
 let currentUser = null;
+let clerkToken = null;
 
 /**
- * Initialize Clerk
+ * Initialize Clerk authentication
  */
 async function initClerk() {
   try {
-    // Dynamically load Clerk script
-    await loadClerkScript();
+    // Check if we have a token in storage
+    const storedAuth = await chrome.storage.local.get(['clerkToken', 'clerkUser']);
 
-    // Initialize Clerk with your publishable key
-    window.Clerk.load({
-      publishableKey: CLERK_PUBLISHABLE_KEY
-    });
+    if (storedAuth.clerkToken && storedAuth.clerkUser) {
+      clerkToken = storedAuth.clerkToken;
+      currentUser = storedAuth.clerkUser;
 
-    // Wait for Clerk to be ready
-    await new Promise(resolve => {
-      if (window.Clerk.loaded) {
-        resolve();
-      } else {
-        window.Clerk.addListener('load', () => resolve());
+      // Verify the token is still valid
+      const isValid = await verifyToken(clerkToken);
+      if (isValid) {
+        return currentUser;
       }
-    });
-
-    // Check if user is already signed in
-    if (window.Clerk.user) {
-      currentUser = {
-        id: window.Clerk.user.id,
-        email: window.Clerk.user.primaryEmailAddress?.emailAddress,
-        firstName: window.Clerk.user.firstName,
-        lastName: window.Clerk.user.lastName
-      };
-      return currentUser;
     }
 
     return null;
@@ -53,55 +41,65 @@ async function initClerk() {
 }
 
 /**
- * Load Clerk script dynamically
+ * Verify if the token is still valid
  */
-function loadClerkScript() {
-  return new Promise((resolve, reject) => {
-    if (window.Clerk) {
-      resolve();
-      return;
-    }
+async function verifyToken(token) {
+  try {
+    const response = await fetch(`${CLERK_API_URL}/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-    const script = document.createElement('script');
-    script.src = `${CLERK_BASE_URL}/npm/@clerk/clerk-js@latest/dist/clerk.browser.js`;
-    script.async = true;
-    script.crossOrigin = 'anonymous';
-    script.onload = resolve;
-    script.onerror = () => reject(new Error('Failed to load Clerk script'));
-    document.head.appendChild(script);
-  });
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
 }
 
 /**
- * Open Clerk sign-in modal
+ * Open authentication page in a new tab
  * @returns {Promise<Object|null>} User data if sign-in successful, null otherwise
  */
 async function openSignInModal() {
-  if (!window.Clerk) {
-    await initClerk();
-  }
+  // Create a sign-in URL
+  const authUrl = `${CLERK_BASE_URL}/sign-in?redirect_url=${encodeURIComponent(chrome.runtime.getURL('auth-callback.html'))}`;
 
-  try {
-    const result = await window.Clerk.openSignIn({
-      redirectUrl: window.location.href,
+  // Open auth in a new tab/window
+  chrome.tabs.create({ url: authUrl });
+
+  // The actual authentication will be handled by the auth-callback.html page
+  // which will receive the token and store it
+
+  // Return null for now, the actual user info will be available after the callback completes
+  return null;
+}
+
+/**
+ * Handle auth callback
+ * @param {string} token - The auth token from Clerk
+ * @param {Object} user - User information
+ */
+async function handleAuthCallback(token, user) {
+  if (token && user) {
+    clerkToken = token;
+    currentUser = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName
+    };
+
+    // Store in Chrome storage
+    await chrome.storage.local.set({
+      clerkToken: token,
+      clerkUser: currentUser
     });
 
-    if (result.createdSessionId) {
-      // User successfully signed in
-      currentUser = {
-        id: window.Clerk.user.id,
-        email: window.Clerk.user.primaryEmailAddress?.emailAddress,
-        firstName: window.Clerk.user.firstName,
-        lastName: window.Clerk.user.lastName
-      };
-      return currentUser;
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Sign-in failed:', error);
-    return null;
+    return currentUser;
   }
+  return null;
 }
 
 /**
@@ -117,20 +115,21 @@ function getCurrentUser() {
  * @returns {boolean} True if authenticated, false otherwise
  */
 function isAuthenticated() {
-  return currentUser !== null;
+  return currentUser !== null && clerkToken !== null;
 }
 
 /**
  * Sign out current user
  */
 async function signOut() {
-  if (!window.Clerk) {
-    await initClerk();
-  }
-
   try {
-    await window.Clerk.signOut();
+    // Clear local data
     currentUser = null;
+    clerkToken = null;
+
+    // Clear from storage
+    await chrome.storage.local.remove(['clerkToken', 'clerkUser']);
+
     return true;
   } catch (error) {
     console.error('Sign-out failed:', error);
@@ -153,6 +152,7 @@ async function storeUserData(userData) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${clerkToken}`
       },
       body: JSON.stringify({
         clerkId: currentUser.id,
@@ -180,5 +180,6 @@ export {
   getCurrentUser,
   isAuthenticated,
   signOut,
-  storeUserData
+  storeUserData,
+  handleAuthCallback
 };

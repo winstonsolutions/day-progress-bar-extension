@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authentication Callback</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #333;
+    }
+    .message {
+      margin: 20px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Authentication</h1>
+    <div id="message" class="message">Processing your authentication...</div>
+  </div>
+
+  <script type="module">
+    import { handleAuthCallback } from './clerk-auth.js';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const messageEl = document.getElementById('message');
+
+      try {
+        // Get token and user info from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('__clerk_token');
+
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        // Get user info from Clerk API
+        const userResponse = await fetch('https://api.clerk.dev/v1/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!userResponse.ok) {
+          throw new Error('Failed to get user information');
+        }
+
+        const userData = await userResponse.json();
+
+        // Process the authentication
+        const user = await handleAuthCallback(token, {
+          id: userData.id,
+          email: userData.email_addresses[0]?.email_address,
+          firstName: userData.first_name,
+          lastName: userData.last_name
+        });
+
+        if (user) {
+          messageEl.textContent = 'Authentication successful! You can close this tab now.';
+          messageEl.className = 'message success';
+
+          // Close this tab after a short delay
+          setTimeout(() => {
+            window.close();
+          }, 3000);
+        } else {
+          throw new Error('Failed to process authentication');
+        }
+      } catch (error) {
+        console.error('Authentication error:', error);
+        messageEl.textContent = `Authentication failed: ${error.message}`;
+        messageEl.className = 'message error';
+      }
+    });
+  </script>
+</body>
+</html>

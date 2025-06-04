@@ -63,3 +63,6 @@ This extension:
 ## License
 
 This project is available as open source under the terms of the MIT License.
+
+## 规则
+Chrome扩展的Manifest V3不允许在CSP中使用'unsafe-inline'

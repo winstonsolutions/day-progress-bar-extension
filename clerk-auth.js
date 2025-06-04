@@ -68,21 +68,32 @@ async function openSignInModal() {
   const callbackUrl = chrome.runtime.getURL('auth-callback.html');
   console.log('认证回调URL:', callbackUrl);
 
-  // 使用Clerk推荐的参数名称
-  // 尝试同时使用redirect_uri和redirect_url以提高兼容性
-  const authUrl = `${CLERK_BASE_URL}/sign-in` +
-                 `?redirect_uri=${encodeURIComponent(callbackUrl)}` +
-                 `&redirect_url=${encodeURIComponent(callbackUrl)}` +
-                 `&after_sign_in_url=${encodeURIComponent(callbackUrl)}` +
-                 `&after_sign_up_url=${encodeURIComponent(callbackUrl)}`;
+  // 获取扩展ID用于调试
+  const extensionId = chrome.runtime.id;
+  console.log('扩展ID:', extensionId);
 
-  console.log('Opening auth URL:', authUrl);
+  // 更新后的URL构建，使用Clerk最新推荐的参数格式
+  const authUrl = `${CLERK_BASE_URL}/sign-in` +
+                 `?redirect_url=${encodeURIComponent(callbackUrl)}` +
+                 `&after_sign_in_url=${encodeURIComponent(callbackUrl)}` +
+                 `&after_sign_up_url=${encodeURIComponent(callbackUrl)}` +
+                 `&_clerk_js_version=4` +  // 指定Clerk JS版本
+                 `&_clerk_callback=true` +  // 确保Clerk知道这是回调
+                 `&client_id=${extensionId}`; // 添加扩展ID作为客户端ID
+
+  console.log('打开认证URL:', authUrl);
 
   // 在控制台输出扩展ID，以便确认正确的授权配置
-  console.log('TTT当前扩展ID:', chrome.runtime.id);
-  console.log('请确保在Clerk dashboard中添加了以下URL:');
-  console.log(`- Authorized URL: chrome-extension://${chrome.runtime.id}/*`);
-  console.log(`- Redirect URL: chrome-extension://${chrome.runtime.id}/auth-callback.html`);
+  console.log('当前扩展ID:', extensionId);
+  console.log('请确保在Clerk dashboard中添加了以下配置:');
+  console.log(`- 已允许的重定向URL: chrome-extension://${extensionId}/auth-callback.html`);
+  console.log(`- 已允许的源: chrome-extension://${extensionId}`);
+
+  // 重要：在打开认证页面前，存储一个状态标记
+  await chrome.storage.local.set({
+    authInProgress: true,
+    authStartTime: Date.now()
+  });
 
   // Open auth in a new tab/window
   chrome.tabs.create({ url: authUrl });

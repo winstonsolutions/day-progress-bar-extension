@@ -56,13 +56,70 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     // Get token and user info from URL params
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('__clerk_token');
 
-    addDebugStep('Parsed URL parameters', { hasToken: !!token, token: token ? `${token.substring(0, 10)}...` : null });
+    // 尝试多种可能的令牌参数名称
+    let token = urlParams.get('__clerk_token');
+
+    // 如果没有找到标准token参数，尝试其他可能的参数名
+    if (!token) {
+      token = urlParams.get('token') ||
+              urlParams.get('clerk_token') ||
+              urlParams.get('access_token');
+    }
+
+    // 尝试从URL哈希中获取token（有时Clerk会将token放在URL哈希而不是查询参数中）
+    if (!token && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      token = hashParams.get('token') ||
+              hashParams.get('__clerk_token') ||
+              hashParams.get('access_token');
+    }
+
+    addDebugStep('Parsed URL parameters', {
+      hasToken: !!token,
+      token: token ? `${token.substring(0, 10)}...` : null,
+      fullUrl: window.location.href,
+      search: window.location.search,
+      hash: window.location.hash
+    });
 
     if (!token) {
       addDebugStep('Token not found in URL');
-      throw new Error('No authentication token found. Make sure your Clerk domain is correctly configured.');
+
+      // 尝试从localStorage/sessionStorage获取token
+      // Clerk有时会将token存储在这里
+      const clerkSession = localStorage.getItem('__clerk_client_jwt') ||
+                          sessionStorage.getItem('__clerk_client_jwt');
+
+      if (clerkSession) {
+        try {
+          const sessionData = JSON.parse(clerkSession);
+          if (sessionData && sessionData.token) {
+            token = sessionData.token;
+            addDebugStep('Found token in browser storage', { source: 'localStorage/sessionStorage' });
+          }
+        } catch (e) {
+          addDebugStep('Error parsing storage token', { error: e.message });
+        }
+      }
+
+      // 如果仍然没有token，查看chrome.storage
+      if (!token) {
+        try {
+          const chromeStorageData = await chrome.storage.local.get(['clerkToken']);
+          if (chromeStorageData && chromeStorageData.clerkToken) {
+            token = chromeStorageData.clerkToken;
+            addDebugStep('Found token in chrome.storage', { source: 'chrome.storage.local' });
+          }
+        } catch (e) {
+          addDebugStep('Error accessing chrome.storage', { error: e.message });
+        }
+      }
+
+      // 如果仍然没有token，显示错误
+      if (!token) {
+        throw new Error('No authentication token found. Make sure your Clerk domain is correctly configured.');
+      }
     }
 
     addDebugStep('Fetching user information from Clerk API');

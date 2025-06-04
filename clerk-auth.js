@@ -99,6 +99,19 @@ async function handleAuthCallback(token, user) {
       clerkUser: currentUser
     });
 
+    // Store user data in MongoDB
+    try {
+      await storeUserData({
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName,
+        subscriptionStatus: 'free' // Default to free subscription
+      });
+      console.log('User data successfully stored in MongoDB');
+    } catch (error) {
+      console.error('Failed to store user data in MongoDB:', error);
+      // Continue with authentication even if MongoDB storage fails
+    }
+
     return currentUser;
   }
   return null;

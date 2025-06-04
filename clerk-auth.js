@@ -65,9 +65,19 @@ async function verifyToken(token) {
  */
 async function openSignInModal() {
   // Create a sign-in URL with your Frontend API
-  const authUrl = `${CLERK_BASE_URL}/sign-in?redirect_url=${encodeURIComponent(chrome.runtime.getURL('auth-callback.html'))}`;
+  const callbackUrl = chrome.runtime.getURL('auth-callback.html');
+  console.log('认证回调URL:', callbackUrl);
+
+  // 更明确地构建认证URL，确保带有正确的参数
+  const authUrl = `${CLERK_BASE_URL}/sign-in?redirect_url=${encodeURIComponent(callbackUrl)}`;
 
   console.log('Opening auth URL:', authUrl);
+
+  // 在控制台输出扩展ID，以便确认正确的授权配置
+  console.log('当前扩展ID:', chrome.runtime.id);
+  console.log('请确保在Clerk dashboard中添加了以下URL:');
+  console.log(`- Authorized URL: chrome-extension://${chrome.runtime.id}/*`);
+  console.log(`- Redirect URL: chrome-extension://${chrome.runtime.id}/auth-callback.html`);
 
   // Open auth in a new tab/window
   chrome.tabs.create({ url: authUrl });

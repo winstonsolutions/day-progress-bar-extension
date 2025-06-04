@@ -118,6 +118,23 @@ document.addEventListener('DOMContentLoaded', async function() {
       const result = await testBackendConnection();
       console.log('后端连接测试结果:', result);
       debugInfoElement.textContent = JSON.stringify(result, null, 2);
+
+      // 添加测试 storeUserData 的代码
+      console.log('正在测试 storeUserData 函数...');
+      try {
+        const testUser = {
+          firstName: 'Test',
+          lastName: 'User',
+          email: `test-${Date.now()}@example.com`
+        };
+        console.log('测试用户数据:', testUser);
+        const storeResult = await storeUserData(testUser);
+        console.log('storeUserData 测试结果:', storeResult);
+        debugInfoElement.textContent += '\n\n--- storeUserData 测试 ---\n' + JSON.stringify(storeResult, null, 2);
+      } catch (storeError) {
+        console.error('storeUserData 测试失败:', storeError);
+        debugInfoElement.textContent += '\n\n--- storeUserData 测试失败 ---\n' + storeError.message;
+      }
     } catch (error) {
       console.error('测试后端连接失败:', error);
       debugInfoElement.textContent = `测试失败: ${error.message}\n${error.stack || ''}`;

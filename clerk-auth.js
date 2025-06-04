@@ -84,6 +84,10 @@ async function openSignInModal() {
  * @param {Object} user - User information
  */
 async function handleAuthCallback(token, user) {
+  console.log('===== handleAuthCallback 开始处理认证回调 =====');
+  console.log('收到的token:', token ? `${token.substring(0, 10)}...` : 'null');
+  console.log('收到的用户数据:', user);
+
   if (token && user) {
     clerkToken = token;
     currentUser = {
@@ -93,27 +97,42 @@ async function handleAuthCallback(token, user) {
       lastName: user.lastName
     };
 
+    console.log('设置当前用户数据:', currentUser);
+
     // Store in Chrome storage
-    await chrome.storage.local.set({
-      clerkToken: token,
-      clerkUser: currentUser
-    });
+    console.log('正在存储到Chrome本地存储...');
+    try {
+      await chrome.storage.local.set({
+        clerkToken: token,
+        clerkUser: currentUser
+      });
+      console.log('Chrome本地存储成功');
+    } catch (storageError) {
+      console.error('Chrome本地存储失败:', storageError);
+    }
 
     // Store user data in MongoDB
     try {
-      await storeUserData({
+      console.log('开始调用storeUserData函数...');
+      const userData = {
         firstName: currentUser.firstName,
         lastName: currentUser.lastName,
         subscriptionStatus: 'free' // Default to free subscription
-      });
-      console.log('User data successfully stored in MongoDB');
+      };
+      console.log('准备存储的用户数据:', userData);
+
+      const result = await storeUserData(userData);
+      console.log('MongoDB存储结果:', result);
     } catch (error) {
-      console.error('Failed to store user data in MongoDB:', error);
+      console.error('存储用户数据到MongoDB失败 (handleAuthCallback):', error);
+      console.error('错误详情:', error.stack || error);
       // Continue with authentication even if MongoDB storage fails
     }
 
     return currentUser;
   }
+
+  console.log('handleAuthCallback 返回空值，认证失败');
   return null;
 }
 
@@ -163,29 +182,35 @@ async function storeUserData(userData) {
     throw new Error('User must be authenticated to store data');
   }
 
+  // 确保API_BASE_URL可用，优先使用全局window变量
+  const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+
   try {
     console.log('===== 开始存储用户数据到MongoDB =====');
-    console.log('API_BASE_URL:', API_BASE_URL);
-    console.log('API端点:', `${API_BASE_URL}/api/users`);
+    console.log('API_BASE_URL:', API_URL);
+    console.log('API端点:', `${API_URL}/api/users`);
     console.log('用户数据:', {
       clerkId: currentUser.id,
       email: currentUser.email,
       ...userData
     });
 
-    // 移除Authorization头，使用查询参数传递clerkToken可能会解决CORS预检问题
-    // 或者使用更简单的JSON格式来避免可能的问题
-    const response = await fetch(`${API_BASE_URL}/api/users`, {
+    // 避免使用Authorization头，直接在请求体中包含所有数据
+    const requestData = {
+      clerkId: currentUser.id,
+      email: currentUser.email,
+      token: clerkToken, // 将token作为请求体的一部分而不是header
+      ...userData
+    };
+
+    console.log('发送的请求数据:', JSON.stringify(requestData));
+
+    const response = await fetch(`${API_URL}/api/users`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        clerkId: currentUser.id,
-        email: currentUser.email,
-        token: clerkToken, // 将token作为请求体的一部分而不是header
-        ...userData
-      })
+      body: JSON.stringify(requestData)
     });
 
     console.log('API响应状态:', response.status, response.statusText);
@@ -217,6 +242,15 @@ async function storeUserData(userData) {
   } catch (error) {
     console.error('存储用户数据到MongoDB过程中出错:', error.message);
     console.error('错误详情:', error);
+
+    // 记录网络错误的更多信息
+    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      console.error('网络请求失败，可能是CORS或网络连接问题');
+      console.error('用户代理:', navigator.userAgent);
+      console.error('当前URL:', window.location.href);
+      console.error('扩展ID:', chrome.runtime.id);
+    }
+
     throw error;
   }
 }

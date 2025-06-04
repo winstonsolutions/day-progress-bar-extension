@@ -99,6 +99,9 @@
         steps: []
       };
 
+      // 默认显示调试信息
+      debugInfoEl.style.display = 'block';
+
       // Toggle debug info visibility
       showDebugBtn.addEventListener('click', () => {
         debugInfoEl.style.display = debugInfoEl.style.display === 'block' ? 'none' : 'block';
@@ -141,6 +144,57 @@
 
         // Get user info from Clerk API
         try {
+          // 添加网络请求监听，以便更好地调试
+          addDebugStep('Setting up network request monitoring');
+          const originalFetch = window.fetch;
+          window.fetch = async function(url, options) {
+            const startTime = new Date();
+            addDebugStep('Fetch request starting', {
+              url: url,
+              method: options?.method || 'GET',
+              headers: options?.headers,
+              body: options?.body ? JSON.parse(options.body) : undefined
+            });
+
+            try {
+              const response = await originalFetch(url, options);
+
+              const endTime = new Date();
+              const duration = endTime - startTime;
+
+              // 克隆响应以便读取内容
+              const clonedResponse = response.clone();
+              let responseBody;
+              try {
+                responseBody = await clonedResponse.text();
+                try {
+                  responseBody = JSON.parse(responseBody);
+                } catch (e) {
+                  // 如果不是JSON，保留文本形式
+                }
+              } catch (e) {
+                responseBody = 'Could not read response body';
+              }
+
+              addDebugStep('Fetch response received', {
+                url: url,
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok,
+                duration: `${duration}ms`,
+                body: responseBody
+              });
+
+              return response;
+            } catch (error) {
+              addDebugStep('Fetch error', {
+                url: url,
+                error: error.message
+              });
+              throw error;
+            }
+          };
+
           const userResponse = await fetch('https://api.clerk.dev/v1/me', {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -185,22 +239,22 @@
               email: user.email
             });
 
-            messageEl.textContent = 'Authentication successful! You can now check the debug info or close this tab.';
+            messageEl.textContent = 'Authentication successful! Please review the debug information below.';
             messageEl.className = 'message success';
 
-            // 显示关闭按钮而不是自动关闭
+            // 显示关闭按钮
             closeTabBtn.style.display = 'inline-block';
           } else {
             addDebugStep('handleAuthCallback returned null');
             throw new Error('Failed to process authentication');
           }
         } catch (fetchError) {
-          addDebugStep('Fetch error', { message: fetchError.message });
+          addDebugStep('Fetch error', { message: fetchError.message, stack: fetchError.stack });
           throw fetchError;
         }
       } catch (error) {
         console.error('Authentication error:', error);
-        addDebugStep('Authentication error', { message: error.message });
+        addDebugStep('Authentication error', { message: error.message, stack: error.stack });
 
         messageEl.textContent = `Authentication failed: ${error.message}`;
         messageEl.className = 'message error';

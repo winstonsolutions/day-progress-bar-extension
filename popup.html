@@ -1,219 +1,131 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
   <title>Day Progress Bar</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     body {
-      width: 360px;
-      margin: 0;
+      width: 300px;
       padding: 15px;
-      font-family: 'Poppins', sans-serif;
-      color: #333;
-      background-color: #f5f7fa;
+      font-family: 'Google Sans', Roboto, Arial, sans-serif;
     }
     h1 {
-      font-size: 22px;
-      font-weight: 600;
-      margin-top: 5px;
+      font-size: 16px;
+      margin-top: 0;
       margin-bottom: 15px;
-      color: #2d3748;
-    }
-    .setting {
-      margin-bottom: 15px;
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 500;
-      color: #4a5568;
-    }
-    select, input[type="time"] {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #e2e8f0;
-      border-radius: 4px;
-      font-family: 'Poppins', sans-serif;
-      box-sizing: border-box;
-      margin-bottom: 5px;
-    }
-    .button-container {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 15px;
+      color: #202124;
     }
     button {
-      background-color: #667eea;
-      color: white;
+      display: block;
+      width: 100%;
+      height: 36px;
+      line-height: 36px;
+      margin-bottom: 10px;
       border: none;
       border-radius: 4px;
-      padding: 10px 16px;
-      font-weight: 500;
       cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      text-align: center;
       transition: background-color 0.2s;
     }
-    button:hover {
-      background-color: #5a67d8;
+    .primary-btn {
+      background-color: #4285F4;
+      color: white;
     }
-    button:disabled {
-      background-color: #cbd5e0;
-      cursor: not-allowed;
+    .primary-btn:hover {
+      background-color: #3b78e7;
     }
-    .status {
-      text-align: center;
-      margin-top: 10px;
-      font-size: 14px;
+    .secondary-btn {
+      background-color: #f1f3f4;
+      color: #5f6368;
     }
-    .success {
-      color: #48bb78;
+    .secondary-btn:hover {
+      background-color: #e3e5e8;
     }
-    .error {
-      color: #f56565;
+    .account-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #e8eaed;
     }
-    .tabs {
-      display: flex;
-      margin-bottom: 15px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .tab {
-      padding: 8px 15px;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      color: #718096;
-      transition: all 0.2s;
-    }
-    .tab.active {
-      border-color: #667eea;
-      color: #667eea;
-      font-weight: 500;
-    }
-    .tab-content {
-      display: none;
-    }
-    .tab-content.active {
-      display: block;
-    }
-    .feature {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid #e2e8f0;
-    }
-    .feature:last-child {
-      border-bottom: none;
-    }
-    .feature-name {
-      font-weight: 500;
-    }
-    .feature-status {
-      font-size: 14px;
-      padding: 4px 8px;
-      border-radius: 12px;
-    }
-    .premium-badge {
-      background-color: #ebf4ff;
-      color: #4299e1;
-    }
-    .included-badge {
-      background-color: #e6fffa;
-      color: #38b2ac;
-    }
-    .user-section {
-      background-color: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-    }
-    .user-info {
+    .account-info {
       display: flex;
       align-items: center;
       margin-bottom: 15px;
     }
-    .avatar {
-      width: 40px;
-      height: 40px;
+    .user-avatar {
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
-      background-color: #e2e8f0;
+      background-color: #e8eaed;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-right: 15px;
-      color: #4a5568;
-      font-weight: 600;
+      margin-right: 10px;
+      color: #5f6368;
+      font-weight: bold;
     }
     .user-details {
-      flex: 1;
+      flex-grow: 1;
     }
     .user-name {
       font-weight: 500;
-      margin: 0;
-    }
-    .user-email {
-      color: #718096;
       font-size: 14px;
-      margin: 0;
+      color: #202124;
     }
-    .user-plan {
-      background-color: #f7fafc;
-      padding: 10px;
-      border-radius: 4px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .plan-info {
-      display: flex;
-      flex-direction: column;
-    }
-    .plan-name {
-      font-weight: 500;
-    }
-    .plan-price {
+    .user-status {
       font-size: 12px;
-      color: #718096;
+      color: #5f6368;
     }
-    .auth-button {
-      background-color: #4299e1;
-      padding: 12px 16px;
-      width: 100%;
-      margin-top: 10px;
-      text-align: center;
+    .pro-badge {
+      font-size: 10px;
+      background-color: #1a73e8;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 5px;
     }
-    .account-link {
-      color: #4299e1;
-      text-align: center;
+    .free-badge {
+      font-size: 10px;
+      background-color: #5f6368;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 5px;
+    }
+    .hidden {
+      display: none;
+    }
+    .clerk-setup-link {
       display: block;
       margin-top: 10px;
-      text-decoration: none;
-      font-size: 14px;
-    }
-    .small-text {
       font-size: 12px;
-      color: #718096;
+      color: #1a73e8;
+      text-decoration: none;
+    }
+    .clerk-setup-link:hover {
+      text-decoration: underline;
     }
     .debug-section {
       margin-top: 20px;
       padding-top: 15px;
-      border-top: 1px dashed #e2e8f0;
+      border-top: 1px dashed #e8eaed;
     }
     .debug-title {
       font-size: 14px;
       font-weight: 500;
-      color: #718096;
+      color: #5f6368;
       margin-bottom: 10px;
     }
     .debug-button {
-      background-color: #68d391;
-      padding: 8px 12px;
+      background-color: #0f9d58;
+      color: white;
+      padding: 8px 16px;
       font-size: 13px;
     }
     .debug-info {
       margin-top: 10px;
       padding: 10px;
-      background-color: #f0fff4;
+      background-color: #f8f9fa;
       border-radius: 4px;
       font-size: 12px;
       max-height: 100px;
@@ -225,103 +137,41 @@
 </head>
 <body>
   <h1>Day Progress Bar</h1>
+  <button id="toggle-btn" class="secondary-btn">Show Progress Bar</button>
 
-  <!-- 用户认证区域 -->
-  <div id="user-section" class="user-section">
-    <div id="loading-state">
-      <p>Loading user information...</p>
+  <!-- Account Section -->
+  <div class="account-section">
+    <!-- Not Logged In State -->
+    <div id="not-logged-in" class="hidden">
+      <button id="login-btn" class="primary-btn">Sign In / Create Account</button>
+      <a href="CLERK_SETUP_GUIDE.html" target="_blank" class="clerk-setup-link">Having trouble signing in? View Clerk Setup Guide</a>
     </div>
 
-    <div id="logged-out-state" style="display:none">
-      <p>Log in to sync your settings and access premium features across devices.</p>
-      <button id="login-button" class="auth-button">Sign In / Create Account</button>
-    </div>
-
-    <div id="logged-in-state" style="display:none">
-      <div class="user-info">
-        <div class="avatar" id="user-avatar">U</div>
+    <!-- Logged In State -->
+    <div id="logged-in" class="hidden">
+      <div class="account-info">
+        <div class="user-avatar" id="user-avatar">U</div>
         <div class="user-details">
-          <p class="user-name" id="user-name">User Name</p>
-          <p class="user-email" id="user-email">user@example.com</p>
+          <div class="user-name" id="user-name">User Name</div>
+          <div class="user-status">
+            Status: <span id="subscription-status">Free</span>
+            <span id="pro-badge" class="pro-badge hidden">PRO</span>
+            <span id="free-badge" class="free-badge hidden">FREE</span>
+          </div>
         </div>
       </div>
-
-      <div class="user-plan">
-        <div class="plan-info">
-          <span class="plan-name" id="user-plan">Free Plan</span>
-          <span class="plan-price" id="user-plan-details">Limited features</span>
-        </div>
-        <button id="upgrade-button">Upgrade</button>
-      </div>
-
-      <a href="#" id="account-link" class="account-link">Manage account</a>
-      <button id="logout-button" class="auth-button" style="background-color: #e2e8f0; color: #4a5568; margin-top: 15px;">Sign Out</button>
+      <button id="account-btn" class="secondary-btn">Manage Account</button>
     </div>
   </div>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="settings">Settings</div>
-    <div class="tab" data-tab="features">Features</div>
-  </div>
-
-  <div id="settings" class="tab-content active">
-    <div class="setting">
-      <label for="start-time">Start Time</label>
-      <input type="time" id="start-time">
-    </div>
-
-    <div class="setting">
-      <label for="end-time">End Time</label>
-      <input type="time" id="end-time">
-    </div>
-
-    <div class="setting">
-      <label for="color-scheme">Color Scheme</label>
-      <select id="color-scheme">
-        <option value="blue">Blue</option>
-        <option value="green">Green</option>
-        <option value="purple">Purple</option>
-        <option value="red">Red</option>
-        <option value="orange">Orange</option>
-      </select>
-    </div>
-
-    <div class="button-container">
-      <button id="save-button">Save Settings</button>
-      <button id="reset-button">Reset</button>
-    </div>
-
-    <div id="status" class="status"></div>
-  </div>
-
-  <div id="features" class="tab-content">
-    <div class="feature">
-      <span class="feature-name">Basic Progress Bar</span>
-      <span class="feature-status included-badge">Included</span>
-    </div>
-    <div class="feature">
-      <span class="feature-name">Custom Hours</span>
-      <span class="feature-status included-badge">Included</span>
-    </div>
-    <div class="feature">
-      <span class="feature-name">Countdown Timer</span>
-      <span class="feature-status premium-badge">Premium</span>
-    </div>
-    <div class="feature">
-      <span class="feature-name">Multiple Profiles</span>
-      <span class="feature-status premium-badge">Premium</span>
-    </div>
-    <p class="small-text">Upgrade to Premium for all features and to support development.</p>
-    <button id="features-upgrade-button" class="auth-button">Start Free Trial</button>
-  </div>
-
-  <!-- 调试区域 -->
+  <!-- Debug Section -->
   <div class="debug-section">
     <div class="debug-title">Debug Tools</div>
     <button id="test-backend-button" class="debug-button">Test Backend Connection</button>
     <div id="debug-info" class="debug-info"></div>
   </div>
 
-  <script type="module" src="popup.js"></script>
+  <script src="popup.js" type="module"></script>
+  <script src="get-extension-id.js"></script>
 </body>
 </html>

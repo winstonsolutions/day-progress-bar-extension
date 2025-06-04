@@ -6,6 +6,9 @@
 // API基础URL - 已更新为实际部署的后端API
 const API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app'; // Railway部署URL
 
+// 确保在clerk-auth.js等其他文件中可以访问API_BASE_URL
+window.API_BASE_URL = API_BASE_URL;
+
 /**
  * 创建Stripe结账会话
  * @param {number} priceInUSD - 订阅的价格（USD）

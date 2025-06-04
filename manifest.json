@@ -29,9 +29,8 @@
   "host_permissions": [
     "https://*.googleapis.com/",
     "https://day-progress-bar-backend-production.up.railway.app/",
-    "https://*.clerk.accounts.dev/",
-    "https://clerk.accounts.dev/",
-    "https://accounts.clerk.dev/",
+    "https://*.accounts.dev/",
+    "https://accounts.dev/",
     "https://api.clerk.dev/"
   ],
   "background": {

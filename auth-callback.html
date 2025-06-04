@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Authentication Callback</title>
+  <!-- 在任何脚本执行前设置全局API基址 -->
+  <script>
+    window.API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app';
+    console.log('预先设置全局API_BASE_URL:', window.API_BASE_URL);
+  </script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -91,10 +96,11 @@
       const showDebugBtn = document.getElementById('show-debug');
       const closeTabBtn = document.getElementById('close-tab');
 
-      // 确保API_BASE_URL可用，这是关键的修复
+      // 二次确认API_BASE_URL设置
+      console.log('确认global API_BASE_URL:', window.API_BASE_URL);
       if (!window.API_BASE_URL) {
         window.API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app';
-        console.log('在auth-callback.html中设置全局API_BASE_URL:', window.API_BASE_URL);
+        console.log('在DOMContentLoaded中重设API_BASE_URL:', window.API_BASE_URL);
       }
 
       // Debug info container
@@ -141,7 +147,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('__clerk_token');
 
-        addDebugStep('Parsed URL parameters', { hasToken: !!token });
+        addDebugStep('Parsed URL parameters', { hasToken: !!token, token: token ? `${token.substring(0, 10)}...` : null });
 
         if (!token) {
           addDebugStep('Token not found in URL');
@@ -157,11 +163,25 @@
           const originalFetch = window.fetch;
           window.fetch = async function(url, options) {
             const startTime = new Date();
+            let requestBody = "No request body";
+
+            if (options?.body) {
+              try {
+                if (typeof options.body === 'string') {
+                  requestBody = JSON.parse(options.body);
+                } else {
+                  requestBody = options.body;
+                }
+              } catch(e) {
+                requestBody = String(options.body).substring(0, 200);
+              }
+            }
+
             addDebugStep('Fetch request starting', {
               url: url,
               method: options?.method || 'GET',
               headers: options?.headers,
-              body: options?.body ? JSON.parse(options.body) : undefined
+              body: requestBody
             });
 
             try {
@@ -197,7 +217,8 @@
             } catch (error) {
               addDebugStep('Fetch error', {
                 url: url,
-                error: error.message
+                error: error.message,
+                stack: error.stack
               });
               throw error;
             }
@@ -227,68 +248,120 @@
           const userData = await userResponse.json();
           addDebugStep('User data received', {
             userId: userData.id,
-            email: userData.email_addresses[0]?.email_address,
+            email: userData.email_addresses?.[0]?.email_address,
             firstName: userData.first_name,
             lastName: userData.last_name
           });
 
-          // Process the authentication
-          addDebugStep('Processing authentication with handleAuthCallback');
-          const user = await handleAuthCallback(token, {
+          // 构建所需的用户对象
+          const userObj = {
             id: userData.id,
-            email: userData.email_addresses[0]?.email_address,
-            firstName: userData.first_name,
-            lastName: userData.last_name
-          });
+            email: userData.email_addresses?.[0]?.email_address || '',
+            firstName: userData.first_name || '',
+            lastName: userData.last_name || ''
+          };
 
-          if (user) {
-            addDebugStep('Authentication successful', {
-              userId: user.id,
-              email: user.email
-            });
+          // 【先尝试方法1】直接调用API保存用户到MongoDB
+          try {
+            addDebugStep('【方法1】尝试直接调用API保存用户');
 
-            // 额外的尝试：直接从callback页面保存用户数据到MongoDB
-            try {
-              addDebugStep('尝试直接从callback页面保存用户到MongoDB...');
+            const apiUrl = `${window.API_BASE_URL}/api/users`;
+            addDebugStep('API endpoint', apiUrl);
 
-              const userSaveData = {
-                clerkId: userData.id,
-                email: userData.email_addresses[0]?.email_address,
-                firstName: userData.first_name,
-                lastName: userData.last_name,
+            const directApiResponse = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                clerkId: userObj.id,
+                email: userObj.email,
+                firstName: userObj.firstName,
+                lastName: userObj.lastName,
+                token: token, // 附上令牌以便后端验证
                 authProvider: userData.primary_email_address_id ? 'email' : 'oauth',
                 signUpMethod: 'google'
-              };
+              })
+            });
 
-              addDebugStep('准备发送的用户数据', userSaveData);
+            const directApiResult = await directApiResponse.json();
+            addDebugStep('【方法1】直接API调用结果', directApiResult);
 
-              // 使用导入的专门API函数
-              const directSaveResult = await createOrUpdateUser(userSaveData);
-
-              addDebugStep('直接保存结果', directSaveResult);
-            } catch (directSaveError) {
-              addDebugStep('直接保存失败', {
-                error: directSaveError.message,
-                stack: directSaveError.stack
-              });
+            if (directApiResponse.ok) {
+              addDebugStep('【方法1】成功 - 用户数据已保存到MongoDB');
+            } else {
+              addDebugStep('【方法1】失败 - 服务器返回错误');
             }
-
-            messageEl.textContent = 'Authentication successful! Please review the debug information below.';
-            messageEl.className = 'message success';
-
-            // 显示关闭按钮
-            closeTabBtn.style.display = 'inline-block';
-          } else {
-            addDebugStep('handleAuthCallback returned null');
-            throw new Error('Failed to process authentication');
+          } catch (directApiError) {
+            addDebugStep('【方法1】错误 - 直接API调用失败', {
+              error: directApiError.message,
+              stack: directApiError.stack
+            });
           }
+
+          // 【再尝试方法2】通过clerk-auth的handleAuthCallback处理认证并保存用户
+          try {
+            addDebugStep('【方法2】通过handleAuthCallback处理认证');
+            const user = await handleAuthCallback(token, userObj);
+
+            if (user) {
+              addDebugStep('【方法2】handleAuthCallback成功', {
+                userId: user.id,
+                email: user.email
+              });
+            } else {
+              addDebugStep('【方法2】handleAuthCallback返回null');
+              throw new Error('handleAuthCallback failed');
+            }
+          } catch (authError) {
+            addDebugStep('【方法2】handleAuthCallback错误', {
+              error: authError.message,
+              stack: authError.stack
+            });
+          }
+
+          // 【最后尝试方法3】通过api.js的createOrUpdateUser函数
+          try {
+            addDebugStep('【方法3】通过createOrUpdateUser函数保存用户');
+
+            const apiUserData = {
+              clerkId: userObj.id,
+              email: userObj.email,
+              firstName: userObj.firstName,
+              lastName: userObj.lastName,
+              authProvider: userData.primary_email_address_id ? 'email' : 'oauth',
+              signUpMethod: 'google'
+            };
+
+            const createResult = await createOrUpdateUser(apiUserData);
+            addDebugStep('【方法3】createOrUpdateUser结果', createResult);
+          } catch (createError) {
+            addDebugStep('【方法3】createOrUpdateUser错误', {
+              error: createError.message,
+              stack: createError.stack
+            });
+          }
+
+          // 显示成功信息
+          messageEl.textContent = 'Authentication successful! Please review the debug information below and close this tab.';
+          messageEl.className = 'message success';
+
+          // 显示关闭按钮
+          closeTabBtn.style.display = 'inline-block';
+
         } catch (fetchError) {
-          addDebugStep('Fetch error', { message: fetchError.message, stack: fetchError.stack });
+          addDebugStep('Fetch error', {
+            message: fetchError.message,
+            stack: fetchError.stack
+          });
           throw fetchError;
         }
       } catch (error) {
         console.error('Authentication error:', error);
-        addDebugStep('Authentication error', { message: error.message, stack: error.stack });
+        addDebugStep('Authentication error', {
+          message: error.message,
+          stack: error.stack
+        });
 
         messageEl.textContent = `Authentication failed: ${error.message}`;
         messageEl.className = 'message error';

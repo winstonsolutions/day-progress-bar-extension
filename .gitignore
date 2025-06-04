@@ -1,0 +1,14 @@
+# 忽略依赖目录
+node_modules/
+
+# 忽略构建结果
+dist/
+build/
+
+# 忽略临时文件
+*.log
+*.tmp
+.DS_Store
+
+# 忽略 VSCode 设置等
+.vscode/

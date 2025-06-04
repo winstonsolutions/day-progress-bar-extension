@@ -75,22 +75,31 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Check if we're returning from an auth flow - look for storage changes
     chrome.storage.onChanged.addListener((changes, namespace) => {
-      console.log('storage changed:', changes, namespace);
-      if (namespace === 'local' && (changes.clerkToken || changes.clerkUser)) {
-        console.log('Auth data changed, updating UI');
-        console.log('New user data:', changes.clerkUser?.newValue);
+      console.log('Storage changed - namespace:', namespace, 'changes:', changes);
+
+      // 不再限制只检查 local 存储，检查所有命名空间
+      // 同时检查多种可能的 Clerk 相关字段
+      if (changes.clerkToken || changes.clerkUser || changes.clerk || changes.user) {
+        console.log('检测到 Clerk 相关数据变化');
         updateAuthenticationUI();
 
+        // 尝试从多种可能的字段中获取用户数据
+        const userData = changes.clerkUser?.newValue ||
+                         changes.clerk?.newValue?.user ||
+                         changes.user?.newValue ||
+                         changes.userData?.newValue;
+
         // 登录成功后，保存用户数据到MongoDB
-        if (changes.clerkUser?.newValue) {
-          const userData = changes.clerkUser.newValue;
-          console.log('保存用户数据到MongoDB:', userData);
+        if (userData) {
+          console.log('找到用户数据，准备保存到MongoDB:', userData);
 
           storeUserData(userData).then(result => {
-            console.log('用户数据已保存:', result);
+            console.log('用户数据已成功保存到MongoDB:', result);
           }).catch(error => {
-            console.error('保存用户数据失败:', error);
+            console.error('保存用户数据到MongoDB失败:', error);
           });
+        } else {
+          console.log('未找到有效的用户数据，无法保存到MongoDB');
         }
       }
     });

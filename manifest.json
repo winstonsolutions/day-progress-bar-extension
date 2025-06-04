@@ -57,7 +57,8 @@
       "account.html",
       "account.js",
       "auth-callback.html",
-      "CLERK_SETUP_GUIDE.html"
+      "CLERK_SETUP_GUIDE.html",
+      "get-extension-id.js"
     ],
     "matches": ["<all_urls>"]
   }]

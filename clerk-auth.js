@@ -7,7 +7,7 @@ import { API_BASE_URL } from './api.js';
 
 // Constants
 const CLERK_PUBLISHABLE_KEY = 'pk_test_Z2xhZC10cm91dC0yNC5jbGVyay5hY2NvdW50cy5kZXYk'; // Replace with your actual key
-const CLERK_BASE_URL = 'https://clerk.accounts.dev'; // Updated Clerk domain
+const CLERK_BASE_URL = 'https://glad-trout-24.clerk.accounts.dev'; // Correct Clerk domain
 const CLERK_API_URL = 'https://api.clerk.dev/v1';
 
 // Store user data

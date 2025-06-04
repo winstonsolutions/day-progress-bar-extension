@@ -95,6 +95,16 @@
     .hidden {
       display: none;
     }
+    .clerk-setup-link {
+      display: block;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #1a73e8;
+      text-decoration: none;
+    }
+    .clerk-setup-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -106,6 +116,7 @@
     <!-- Not Logged In State -->
     <div id="not-logged-in" class="hidden">
       <button id="login-btn" class="primary-btn">Sign In / Create Account</button>
+      <a href="CLERK_SETUP_GUIDE.html" target="_blank" class="clerk-setup-link">Having trouble signing in? View Clerk Setup Guide</a>
     </div>
 
     <!-- Logged In State -->
@@ -126,5 +137,6 @@
   </div>
 
   <script src="popup.js" type="module"></script>
+  <script src="get-extension-id.js"></script>
 </body>
 </html>

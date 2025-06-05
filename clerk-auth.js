@@ -80,13 +80,15 @@ async function openSignInModal() {
   const dashboardUrl = `http://localhost:3000/api/clerk-callback?extension_id=${extensionId}`;
 
   // 使用固定的测试token，方便调试
-  const testMode = false; // 设置为true开启测试模式
+  const testMode = false; // 设置为false以测试实际的Clerk认证
   let testParams = '';
 
   if (testMode) {
     // 在测试模式下添加一个fake_token参数，帮助诊断问题
     testParams = '&fake_token=test_token_for_debugging';
     console.log('测试模式已开启，将添加fake_token参数');
+  } else {
+    console.log('测试模式已关闭，将使用真实的Clerk认证流程');
   }
 
   // 构建认证URL - 直接重定向到本地测试应用

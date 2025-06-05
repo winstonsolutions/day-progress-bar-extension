@@ -6,7 +6,7 @@
 console.log('Loading api.js module...');
 
 // API基础URL - 检查是否应该使用本地部署
-let API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app'; // Railway部署URL（默认）
+let API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app:8080'; // Railway部署URL（默认）
 
 // 检查是否应该使用本地部署
 try {

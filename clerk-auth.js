@@ -137,7 +137,7 @@ async function openSignInModal() {
   // const callbackUrl = `http://localhost:3000/auth/clerk-callback?extension_id=${extensionId}`;
 
   // 使用Railway部署的后端URL
-  const callbackUrl = `https://day-progress-bar-backend-production.up.railway.app/auth/clerk-callback?extension_id=${extensionId}`;
+  const callbackUrl = `https://day-progress-bar-backend-production.up.railway.app:8080/auth/clerk-callback?extension_id=${extensionId}`;
 
   // 关闭测试模式，使用真实的Clerk认证流程
   const testMode = false;

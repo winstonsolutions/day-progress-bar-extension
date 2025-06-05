@@ -79,14 +79,28 @@ async function openSignInModal() {
   // 指向本地测试应用的URL - 用于开发测试
   const dashboardUrl = `http://localhost:3000/api/clerk-callback?extension_id=${extensionId}`;
 
+  // 使用固定的测试token，方便调试
+  const testMode = true; // 设置为true开启测试模式
+  let testParams = '';
+
+  if (testMode) {
+    // 在测试模式下添加一个fake_token参数，帮助诊断问题
+    testParams = '&fake_token=test_token_for_debugging';
+    console.log('测试模式已开启，将添加fake_token参数');
+  }
+
   // 构建认证URL - 直接重定向到本地测试应用
   const authUrl = `${CLERK_BASE_URL}/sign-in` +
-                 `?redirect_url=${encodeURIComponent(dashboardUrl)}` +
-                 `&after_sign_in_url=${encodeURIComponent(dashboardUrl)}` +
-                 `&after_sign_up_url=${encodeURIComponent(dashboardUrl)}` +
+                 `?redirect_url=${encodeURIComponent(dashboardUrl + testParams)}` +
+                 `&after_sign_in_url=${encodeURIComponent(dashboardUrl + testParams)}` +
+                 `&after_sign_up_url=${encodeURIComponent(dashboardUrl + testParams)}` +
                  `&extension_id=${extensionId}`; // 仍然传递扩展ID
 
   console.log('打开认证URL(就是clerk登陆界面):', authUrl);
+  console.log('URL参数解析:');
+  console.log('- redirect_url:', dashboardUrl + testParams);
+  console.log('- after_sign_in_url:', dashboardUrl + testParams);
+  console.log('- extension_id:', extensionId);
 
   // 在控制台输出配置信息
   console.log('请确保在Clerk dashboard中添加了以下配置:');
@@ -95,7 +109,8 @@ async function openSignInModal() {
   // 重要：在打开认证页面前，存储一个状态标记
   await chrome.storage.local.set({
     authInProgress: true,
-    authStartTime: Date.now()
+    authStartTime: Date.now(),
+    authTestMode: testMode
   });
 
   // Open auth in a new tab/window

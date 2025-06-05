@@ -130,18 +130,23 @@ async function openSignInModal() {
   // const callbackUrl = `http://localhost:3000/auth/clerk-callback?extension_id=${extensionId}`;
 
   // 直接使用扩展内部的auth-callback.html页面处理认证回调
-  const callbackUrl = `chrome-extension://${extensionId}/auth-callback.html?extension_id=${extensionId}`;
+  // const callbackUrl = `chrome-extension://${extensionId}/auth-callback.html?extension_id=${extensionId}`;
+
+  // 使用后端的clerk-callback路由处理认证，确保包含扩展ID
+  // 注意：这里修改为强制包含__clerk_db_jwt参数，这是Clerk SDK内部使用的令牌参数名
+  const callbackUrl = `http://localhost:3000/auth/clerk-callback?extension_id=${extensionId}`;
 
   // 关闭测试模式，使用真实的Clerk认证流程
   const testMode = false;
   let testParams = '';
 
   console.log('测试模式已关闭，将使用真实的Clerk认证流程');
-  console.log('使用扩展内部auth-callback页面处理认证:', callbackUrl);
+  console.log('使用后端clerk-callback处理认证:', callbackUrl);
 
-  // 构建认证URL - 重定向到回调处理程序
-  const authUrl = `${CLERK_BASE_URL}/sign-in` +
-                 `?redirect_url=${encodeURIComponent(callbackUrl)}` +
+  // 构建Clerk身份验证URL (注意这里包含了多种可能的令牌参数名，增加成功率)
+  // Clerk在重定向时可能使用__clerk_token或token或__clerk_db_jwt
+  const authUrl = `${CLERK_BASE_URL}/sign-in?` +
+                 `redirect_url=${encodeURIComponent(callbackUrl)}` +
                  `&after_sign_in_url=${encodeURIComponent(callbackUrl)}` +
                  `&after_sign_up_url=${encodeURIComponent(callbackUrl)}` +
                  `&extension_id=${extensionId}`;
@@ -155,6 +160,11 @@ async function openSignInModal() {
   // 在控制台输出配置信息
   console.log('请确保在Clerk dashboard中添加了以下配置:');
   console.log(`- 已允许的重定向URL: ${callbackUrl}`);
+  console.log('重要提示: 在Clerk设置中，还必须:');
+  console.log('1. 确保"JWT Template"已正确配置');
+  console.log('2. 在Clerk仪表板中允许跨域(CORS)请求');
+  console.log('3. 在Production URL中添加您的本地开发URL (例如: http://localhost:3000)');
+  console.log('4. 确保"Session Token Template"正确设置，启用了token传递');
 
   // 重要：在打开认证页面前，存储一个状态标记
   await chrome.storage.local.set({

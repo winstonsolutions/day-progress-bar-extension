@@ -251,7 +251,7 @@ chrome.runtime.onInstalled.addListener(() => {
     id: 'clerk-message-listener',
     matches: [
       'http://localhost:3000/*',  // 本地测试环境
-      'https://day-progress-bar-backend-production.up.railway.app/*'  // 部署环境
+      'https://day-progress-bar-backend-production.up.railway.app/*'  // 部署环境（包括所有子路径）
     ],
     js: ['content-message-bridge.js'],
     runAt: 'document_idle'

@@ -123,34 +123,35 @@ async function openSignInModal() {
   // const dashboardUrl = `http://localhost/dashboard?extension_id=${extensionId}`;
 
   // 使用本地部署的dashboard界面 - 使用3000端口
-  const dashboardUrl = `http://localhost:3000/dashboard?extension_id=${extensionId}`;
-
-  // 如果遇到本地端口不是80，请使用下面的配置（取消注释并更改端口号）
+  // 注意：使用"token"作为参数名而不是"__clerk_token"，因为后端dashboard页面期望这个参数名
   // const dashboardUrl = `http://localhost:3000/dashboard?extension_id=${extensionId}`;
+
+  // 使用本地后端的clerk回调处理程序，它会正确转换token并重定向到dashboard
+  const callbackUrl = `http://localhost:3000/auth/clerk-callback?extension_id=${extensionId}`;
 
   // 关闭测试模式，使用真实的Clerk认证流程
   const testMode = false;
   let testParams = '';
 
   console.log('测试模式已关闭，将使用真实的Clerk认证流程');
-  console.log('使用本地部署的dashboard页面:', dashboardUrl);
+  console.log('使用本地后端的Clerk回调路由:', callbackUrl);
 
-  // 构建认证URL - 重定向到部署版本
+  // 构建认证URL - 重定向到回调处理程序
   const authUrl = `${CLERK_BASE_URL}/sign-in` +
-                 `?redirect_url=${encodeURIComponent(dashboardUrl + testParams)}` +
-                 `&after_sign_in_url=${encodeURIComponent(dashboardUrl + testParams)}` +
-                 `&after_sign_up_url=${encodeURIComponent(dashboardUrl + testParams)}` +
+                 `?redirect_url=${encodeURIComponent(callbackUrl + testParams)}` +
+                 `&after_sign_in_url=${encodeURIComponent(callbackUrl + testParams)}` +
+                 `&after_sign_up_url=${encodeURIComponent(callbackUrl + testParams)}` +
                  `&extension_id=${extensionId}`;
 
   console.log('打开认证URL(就是clerk登陆界面):', authUrl);
   console.log('URL参数解析:');
-  console.log('- redirect_url:', dashboardUrl + testParams);
-  console.log('- after_sign_in_url:', dashboardUrl + testParams);
+  console.log('- redirect_url:', callbackUrl + testParams);
+  console.log('- after_sign_in_url:', callbackUrl + testParams);
   console.log('- extension_id:', extensionId);
 
   // 在控制台输出配置信息
   console.log('请确保在Clerk dashboard中添加了以下配置:');
-  console.log(`- 已允许的重定向URL: ${dashboardUrl}`);
+  console.log(`- 已允许的重定向URL: ${callbackUrl}`);
 
   // 重要：在打开认证页面前，存储一个状态标记
   await chrome.storage.local.set({

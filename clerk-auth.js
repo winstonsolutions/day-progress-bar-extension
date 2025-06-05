@@ -119,8 +119,11 @@ async function openSignInModal() {
   // 使用部署在Railway上的dashboard界面 - 修正为正确的dashboard路径
   // const dashboardUrl = `https://day-progress-bar-backend-production.up.railway.app/src/view/dashboard.html?extension_id=${extensionId}`;
 
-  // 使用本地部署的dashboard界面
-  const dashboardUrl = `http://localhost/src/view/dashboard.html?extension_id=${extensionId}`;
+  // 使用本地部署的dashboard界面 - 根据后端路由规则修正
+  const dashboardUrl = `http://localhost/dashboard?extension_id=${extensionId}`;
+
+  // 如果遇到本地端口不是80，请使用下面的配置（取消注释并更改端口号）
+  // const dashboardUrl = `http://localhost:3000/dashboard?extension_id=${extensionId}`;
 
   // 关闭测试模式，使用真实的Clerk认证流程
   const testMode = false;

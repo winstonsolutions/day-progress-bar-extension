@@ -252,7 +252,11 @@ chrome.runtime.onInstalled.addListener(() => {
     matches: [
       'http://localhost:3000/*',  // 本地测试环境
       'https://day-progress-bar-backend-production.up.railway.app/*',  // 部署环境（包括所有子路径）
-      'http://localhost/*'  // 本地部署环境
+      'http://localhost/*',       // 本地部署环境（默认80端口）
+      'http://127.0.0.1/*',       // 本地部署环境 - 另一种表示方式
+      'http://localhost:5000/*',  // 另一个常用的Node服务器端口
+      'http://localhost:8080/*',  // 另一个常用的开发端口
+      'http://localhost:8000/*'   // 另一个常用的开发端口
     ],
     js: ['content-message-bridge.js'],
     runAt: 'document_idle'

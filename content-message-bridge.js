@@ -9,7 +9,11 @@ console.log('[内容脚本] 已加载消息桥接脚本，可以接收来自页�
 const ALLOWED_ORIGINS = [
   'http://localhost:3000',  // 本地开发环境
   'https://day-progress-bar-backend-production.up.railway.app',  // Railway上的部署环境
-  'http://localhost'  // 本地部署环境
+  'http://localhost',       // 本地部署环境 (默认80端口)
+  'http://127.0.0.1',       // 本地部署环境 - 另一种表示方式
+  'http://localhost:5000',  // 另一个常用的Node服务器端口
+  'http://localhost:8080',  // 另一个常用的开发端口
+  'http://localhost:8000'   // 另一个常用的开发端口
 ];
 
 // 监听页面发出的消息

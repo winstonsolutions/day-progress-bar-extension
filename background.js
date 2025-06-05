@@ -197,6 +197,17 @@ chrome.runtime.onMessageExternal.addListener(
 
 // Initialize
 chrome.runtime.onInstalled.addListener(() => {
+  console.log("扩展已安装，添加监听器监听来自网页的消息");
+
+  // 添加内容脚本，用于接收网页中的postMessage消息
+  chrome.scripting.registerContentScripts([{
+    id: 'clerk-message-listener',
+    matches: ['http://localhost:3000/*'],  // 只匹配本地测试页面
+    js: ['content-message-bridge.js'],
+    runAt: 'document_idle'
+  }])
+  .catch(err => console.error('注册内容脚本失败:', err));
+
   // Check if permissions exist for context menus
   if (chrome.contextMenus) {
     setupContextMenu();

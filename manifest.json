@@ -24,14 +24,15 @@
       "css": ["style.css"]
     }
   ],
-  "permissions": ["storage", "identity", "notifications", "contextMenus", "tabs"],
+  "permissions": ["storage", "identity", "notifications", "contextMenus", "tabs", "scripting"],
   "optional_permissions": [],
   "host_permissions": [
     "https://*.googleapis.com/",
     "https://day-progress-bar-backend-production.up.railway.app/",
     "https://*.accounts.dev/",
     "https://accounts.dev/",
-    "https://api.clerk.dev/"
+    "https://api.clerk.dev/",
+    "http://localhost:3000/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -46,7 +47,8 @@
   "externally_connectable": {
     "matches": [
       "https://day-progress-bar-backend-production.up.railway.app/*",
-      "https://*.accounts.dev/*"
+      "https://*.accounts.dev/*",
+      "http://localhost:3000/*"
     ],
     "accepts_tls_channel_id": false
   },
@@ -64,7 +66,8 @@
       "account.js",
       "auth-callback.html",
       "CLERK_SETUP_GUIDE.html",
-      "get-extension-id.js"
+      "get-extension-id.js",
+      "content-message-bridge.js"
     ],
     "matches": ["<all_urls>"]
   }]

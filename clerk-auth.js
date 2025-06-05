@@ -76,10 +76,10 @@ async function openSignInModal() {
   // 我们将扩展ID和回调路径作为参数传递
   const redirectorUrl = 'https://day-progress-bar-backend-production.up.railway.app/auth/clerk-redirect';
 
-  // 指向后端dashboard的URL - 简化流程，直接重定向到这里
-  const dashboardUrl = `https://day-progress-bar-backend-production.up.railway.app/dashboard?extension_id=${extensionId}`;
+  // 指向本地测试应用的URL - 用于开发测试
+  const dashboardUrl = `http://localhost:3000/api/clerk-callback?extension_id=${extensionId}`;
 
-  // 构建认证URL - 直接重定向到后端dashboard
+  // 构建认证URL - 直接重定向到本地测试应用
   const authUrl = `${CLERK_BASE_URL}/sign-in` +
                  `?redirect_url=${encodeURIComponent(dashboardUrl)}` +
                  `&after_sign_in_url=${encodeURIComponent(dashboardUrl)}` +

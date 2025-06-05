@@ -43,6 +43,13 @@
     "client_id": "${966163827588-v9k3ht1k0a9acbsgt26n831lda9he8qm.apps.googleusercontent.com}",
     "scopes": ["https://www.googleapis.com/auth/userinfo.email"]
   },
+  "externally_connectable": {
+    "matches": [
+      "https://day-progress-bar-backend-production.up.railway.app/*",
+      "https://*.accounts.dev/*"
+    ],
+    "accepts_tls_channel_id": false
+  },
   "web_accessible_resources": [{
     "resources": [
       "subscription.html",

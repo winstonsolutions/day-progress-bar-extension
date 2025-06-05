@@ -68,32 +68,29 @@ async function openSignInModal() {
   const extensionId = chrome.runtime.id;
   console.log('扩展ID:', extensionId);
 
-  // 使用扩展ID作为参数，构建真正的回调URL
-  const actualCallbackUrl = chrome.runtime.getURL('auth-callback.html');
-  console.log('真实回调URL:', actualCallbackUrl);
+  // 使用扩展ID作为参数，构建真正的回调URL - 但不再使用
+  // const actualCallbackUrl = chrome.runtime.getURL('auth-callback.html');
+  // console.log('真实回调URL:', actualCallbackUrl);
 
   // 使用API后端部署的中间重定向页面
   // 我们将扩展ID和回调路径作为参数传递
   const redirectorUrl = 'https://day-progress-bar-backend-production.up.railway.app/auth/clerk-redirect';
 
-  // 强制重定向URL - 用于开发模式时绕过Clerk的默认行为
-  const forceRedirectUrl = 'https://day-progress-bar-backend-production.up.railway.app/dashboard';
+  // 指向后端dashboard的URL - 简化流程，直接重定向到这里
+  const dashboardUrl = `https://day-progress-bar-backend-production.up.railway.app/dashboard?extension_id=${extensionId}`;
 
-  // 构建认证URL - 使用后端重定向器作为回调
+  // 构建认证URL - 直接重定向到后端dashboard
   const authUrl = `${CLERK_BASE_URL}/sign-in` +
-                 `?redirect_url=${encodeURIComponent(redirectorUrl)}` +
-                 `&after_sign_in_url=${encodeURIComponent(redirectorUrl)}` +
-                 `&after_sign_up_url=${encodeURIComponent(redirectorUrl)}` +
-                 `&extension_id=${extensionId}` + // 传递扩展ID
-                 `&extension_callback=auth-callback.html` + // 传递回调页面路径
-                 `&force_redirect_url=${encodeURIComponent(forceRedirectUrl)}`; // 强制重定向URL
+                 `?redirect_url=${encodeURIComponent(dashboardUrl)}` +
+                 `&after_sign_in_url=${encodeURIComponent(dashboardUrl)}` +
+                 `&after_sign_up_url=${encodeURIComponent(dashboardUrl)}` +
+                 `&extension_id=${extensionId}`; // 仍然传递扩展ID
 
-  console.log('打开认证URL:', authUrl);
+  console.log('打开认证URL(就是clerk登陆界面):', authUrl);
 
   // 在控制台输出配置信息
   console.log('请确保在Clerk dashboard中添加了以下配置:');
-  console.log(`- 已允许的重定向URL: ${redirectorUrl}`);
-  console.log(`- 强制重定向URL: ${forceRedirectUrl}`);
+  console.log(`- 已允许的重定向URL: ${dashboardUrl}`);
 
   // 重要：在打开认证页面前，存储一个状态标记
   await chrome.storage.local.set({
@@ -103,9 +100,6 @@ async function openSignInModal() {
 
   // Open auth in a new tab/window
   chrome.tabs.create({ url: authUrl });
-
-  // 监听消息，以处理重定向后的认证结果
-  // 这部分已经在background.js中处理了
 
   // Return null for now, the actual user info will be available after the callback completes
   return null;

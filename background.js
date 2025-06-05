@@ -78,7 +78,122 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
     return true;
   }
+
+  // 处理从dashboard.html页面接收的Clerk认证结果
+  if (message.action === 'clerk-auth-success') {
+    console.log('收到clerk-auth-success消息，处理认证成功');
+
+    // 如果消息包含token
+    if (message.token) {
+      // 调用API获取用户信息
+      fetch('https://api.clerk.dev/v1/me', {
+        headers: {
+          'Authorization': `Bearer ${message.token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`API返回错误: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(userData => {
+        console.log('从Clerk API获取到用户数据:', userData);
+
+        // 构建用户对象
+        const user = {
+          id: userData.id,
+          email: userData.email_addresses?.[0]?.email_address || '',
+          firstName: userData.first_name || '',
+          lastName: userData.last_name || ''
+        };
+
+        // 存储认证信息到chrome.storage
+        chrome.storage.local.set({
+          clerkToken: message.token,
+          clerkUser: user,
+          authComplete: true
+        }, () => {
+          console.log('成功将认证信息存储到chrome.storage');
+        });
+
+        // 发送响应
+        sendResponse({ success: true });
+      })
+      .catch(error => {
+        console.error('处理Clerk认证失败:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+
+      return true; // 表示将异步发送响应
+    }
+  }
 });
+
+// Listen for external messages (from web pages)
+chrome.runtime.onMessageExternal.addListener(
+  (message, sender, sendResponse) => {
+    console.log('收到外部消息:', message);
+
+    // 处理从dashboard.html页面接收的Clerk认证结果
+    if (message.action === 'clerk-auth-success' || message.type === 'clerk-auth-success') {
+      console.log('收到外部clerk-auth-success消息');
+
+      const token = message.token;
+      if (token) {
+        // 处理与上面相同的认证逻辑
+        fetch('https://api.clerk.dev/v1/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`API返回错误: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(userData => {
+          console.log('从Clerk API获取到用户数据:', userData);
+
+          // 构建用户对象
+          const user = {
+            id: userData.id,
+            email: userData.email_addresses?.[0]?.email_address || '',
+            firstName: userData.first_name || '',
+            lastName: userData.last_name || ''
+          };
+
+          // 存储认证信息
+          chrome.storage.local.set({
+            clerkToken: token,
+            clerkUser: user,
+            authComplete: true
+          }, () => {
+            console.log('成功将认证信息存储到chrome.storage');
+
+            // 尝试关闭dashboard标签页
+            if (sender.tab && sender.tab.id) {
+              chrome.tabs.remove(sender.tab.id);
+            }
+          });
+
+          sendResponse({ success: true });
+        })
+        .catch(error => {
+          console.error('处理Clerk认证失败:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+
+        return true; // 表示将异步发送响应
+      }
+    }
+
+    return false;
+  }
+);
 
 // Initialize
 chrome.runtime.onInstalled.addListener(() => {

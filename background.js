@@ -249,7 +249,10 @@ chrome.runtime.onInstalled.addListener(() => {
   // 添加内容脚本，用于接收网页中的postMessage消息
   chrome.scripting.registerContentScripts([{
     id: 'clerk-message-listener',
-    matches: ['http://localhost:3000/*'],  // 只匹配本地测试页面
+    matches: [
+      'http://localhost:3000/*',  // 本地测试环境
+      'https://day-progress-bar-backend-production.up.railway.app/*'  // 部署环境
+    ],
     js: ['content-message-bridge.js'],
     runAt: 'document_idle'
   }])

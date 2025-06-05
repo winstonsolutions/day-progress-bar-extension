@@ -5,14 +5,21 @@
 
 console.log('[内容脚本] 已加载消息桥接脚本，可以接收来自页面的消息');
 
+// 允许的来源列表
+const ALLOWED_ORIGINS = [
+  'http://localhost:3000',  // 本地开发环境
+  'https://day-progress-bar-backend-production.up.railway.app'  // Railway上的部署环境
+];
+
 // 监听页面发出的消息
 window.addEventListener('message', function(event) {
   // 确保消息来自我们期望的源
-  if (event.origin !== 'http://localhost:3000') {
+  if (!ALLOWED_ORIGINS.includes(event.origin)) {
+    console.log('[内容脚本] 忽略来自未授权源的消息:', event.origin);
     return;
   }
 
-  console.log('[内容脚本] 收到页面消息:', event.data);
+  console.log('[内容脚本] 收到页面消息:', event.data, '来源:', event.origin);
 
   // 检查消息类型
   const message = event.data;
@@ -23,7 +30,9 @@ window.addEventListener('message', function(event) {
     chrome.runtime.sendMessage({
       action: 'clerk-auth-success',
       token: message.token,
+      user: message.user, // 确保转发用户数据
       source: 'content-script',
+      origin: event.origin,
       originalMessage: message
     })
     .then(response => {
@@ -34,7 +43,7 @@ window.addEventListener('message', function(event) {
         type: 'clerk-auth-response',
         success: !!response?.success,
         message: response?.success ? '认证成功' : '认证失败'
-      }, '*');
+      }, event.origin);
     })
     .catch(error => {
       console.error('[内容脚本] 发送消息到background失败:', error);

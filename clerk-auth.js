@@ -110,29 +110,28 @@ async function openSignInModal() {
   const extensionId = chrome.runtime.id;
   console.log('扩展ID:', extensionId);
 
-  // 使用扩展ID作为参数，构建真正的回调URL - 但不再使用
-  // const actualCallbackUrl = chrome.runtime.getURL('auth-callback.html');
-  // console.log('真实回调URL:', actualCallbackUrl);
-
   // 使用API后端部署的中间重定向页面
-  // 我们将扩展ID和回调路径作为参数传递
   const redirectorUrl = 'https://day-progress-bar-backend-production.up.railway.app/auth/clerk-redirect';
 
-  // 指向本地测试应用的URL - 用于开发测试
-  const dashboardUrl = `http://localhost:3000/api/clerk-callback?extension_id=${extensionId}`;
+  // 本地测试应用URL（已注释掉，改为使用部署版本）
+  // const dashboardUrl = `http://localhost:3000/api/clerk-callback?extension_id=${extensionId}`;
+
+  // 使用部署在Railway上的dashboard界面
+  const dashboardUrl = `${redirectorUrl}?extension_id=${extensionId}`;
 
   // 关闭测试模式，使用真实的Clerk认证流程
-  const testMode = false; // 设置为false，使用真实的Clerk认证
+  const testMode = false;
   let testParams = '';
 
   console.log('测试模式已关闭，将使用真实的Clerk认证流程');
+  console.log('使用部署在Railway上的回调URL:', dashboardUrl);
 
-  // 构建认证URL - 直接重定向到本地测试应用
+  // 构建认证URL - 重定向到部署版本
   const authUrl = `${CLERK_BASE_URL}/sign-in` +
                  `?redirect_url=${encodeURIComponent(dashboardUrl + testParams)}` +
                  `&after_sign_in_url=${encodeURIComponent(dashboardUrl + testParams)}` +
                  `&after_sign_up_url=${encodeURIComponent(dashboardUrl + testParams)}` +
-                 `&extension_id=${extensionId}`; // 仍然传递扩展ID
+                 `&extension_id=${extensionId}`;
 
   console.log('打开认证URL(就是clerk登陆界面):', authUrl);
   console.log('URL参数解析:');

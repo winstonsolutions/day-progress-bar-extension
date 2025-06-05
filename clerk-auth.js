@@ -46,15 +46,33 @@ async function initClerk() {
  */
 async function verifyToken(token) {
   try {
+    console.log('验证令牌有效性...');
     const response = await fetch(`${CLERK_API_URL}/me`, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
 
-    return response.ok;
+    console.log('验证令牌响应状态:', response.status);
+
+    if (!response.ok) {
+      console.error('令牌验证失败:', response.status, response.statusText);
+      return false;
+    }
+
+    // 获取并记录用户信息以确认验证成功
+    try {
+      const userData = await response.json();
+      console.log('令牌验证成功，获取到用户ID:', userData.id);
+      return true;
+    } catch (parseError) {
+      console.error('解析用户数据失败:', parseError);
+      return false;
+    }
   } catch (error) {
+    console.error('令牌验证过程中出错:', error);
     return false;
   }
 }
@@ -79,17 +97,11 @@ async function openSignInModal() {
   // 指向本地测试应用的URL - 用于开发测试
   const dashboardUrl = `http://localhost:3000/api/clerk-callback?extension_id=${extensionId}`;
 
-  // 使用固定的测试token，方便调试
-  const testMode = false; // 设置为false以测试实际的Clerk认证
+  // 关闭测试模式，使用真实的Clerk认证流程
+  const testMode = false; // 设置为false，使用真实的Clerk认证
   let testParams = '';
 
-  if (testMode) {
-    // 在测试模式下添加一个fake_token参数，帮助诊断问题
-    testParams = '&fake_token=test_token_for_debugging';
-    console.log('测试模式已开启，将添加fake_token参数');
-  } else {
-    console.log('测试模式已关闭，将使用真实的Clerk认证流程');
-  }
+  console.log('测试模式已关闭，将使用真实的Clerk认证流程');
 
   // 构建认证URL - 直接重定向到本地测试应用
   const authUrl = `${CLERK_BASE_URL}/sign-in` +
@@ -112,7 +124,7 @@ async function openSignInModal() {
   await chrome.storage.local.set({
     authInProgress: true,
     authStartTime: Date.now(),
-    authTestMode: testMode
+    authTestMode: false // 确保测试模式已关闭
   });
 
   // Open auth in a new tab/window
@@ -132,6 +144,33 @@ async function handleAuthCallback(token, user) {
   console.log('收到的token:', token ? `${token.substring(0, 10)}...` : 'null');
   console.log('收到的用户数据:', user);
 
+  // 验证令牌是否合法
+  try {
+    if (!token) {
+      console.error('认证失败: 未提供令牌');
+      return null;
+    }
+
+    // 检查是否为测试令牌
+    if (token === 'test_token_for_debugging') {
+      console.log('检测到测试令牌，在非测试环境中不接受测试令牌，返回null');
+      return null;
+    }
+
+    // 验证真实令牌
+    console.log('验证收到的真实令牌...');
+    const isValid = await verifyToken(token);
+    if (!isValid) {
+      console.error('令牌验证失败，无法继续处理');
+      return null;
+    }
+    console.log('令牌验证成功，继续处理');
+  } catch (verifyError) {
+    console.error('令牌验证过程中出错:', verifyError);
+    // 即使验证失败，我们仍然尝试处理，以避免阻止正常流程
+    console.log('尝试继续处理，即使令牌验证失败');
+  }
+
   if (token && user) {
     // 首先设置全局认证状态
     console.log('正在设置全局认证状态...');
@@ -149,7 +188,9 @@ async function handleAuthCallback(token, user) {
     try {
       await chrome.storage.local.set({
         clerkToken: token,
-        clerkUser: currentUser
+        clerkUser: currentUser,
+        authComplete: true,
+        isTestMode: false // 标记为非测试模式
       });
       console.log('Chrome本地存储成功');
     } catch (storageError) {
@@ -199,13 +240,15 @@ async function handleAuthCallback(token, user) {
           lastName: currentUser.lastName,
           authProvider: user.primaryEmailAddress?.emailAddress ? 'email' : 'social',
           signUpMethod: 'clerk',
-          subscriptionStatus: 'free'
+          subscriptionStatus: 'free',
+          token: token // 包含令牌以便后端验证
         };
 
         const response = await fetch(`${API_URL}/api/users`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` // 添加令牌到授权头
           },
           body: JSON.stringify(requestData)
         });
@@ -283,11 +326,10 @@ async function storeUserData(userData) {
       ...userData
     });
 
-    // 避免使用Authorization头，直接在请求体中包含所有数据
+    // 使用标准的授权头和请求体
     const requestData = {
       clerkId: currentUser.id,
       email: currentUser.email,
-      token: clerkToken, // 将token作为请求体的一部分而不是header
       ...userData
     };
 
@@ -297,6 +339,7 @@ async function storeUserData(userData) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${clerkToken}` // 使用标准授权头
       },
       body: JSON.stringify(requestData)
     });

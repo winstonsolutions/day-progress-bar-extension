@@ -80,7 +80,7 @@ async function openSignInModal() {
   const dashboardUrl = `http://localhost:3000/api/clerk-callback?extension_id=${extensionId}`;
 
   // 使用固定的测试token，方便调试
-  const testMode = true; // 设置为true开启测试模式
+  const testMode = false; // 设置为true开启测试模式
   let testParams = '';
 
   if (testMode) {

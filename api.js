@@ -5,8 +5,21 @@
 
 console.log('Loading api.js module...');
 
-// API基础URL - 已更新为实际部署的后端API
-const API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app'; // Railway部署URL
+// API基础URL - 检查是否应该使用本地部署
+let API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app'; // Railway部署URL（默认）
+
+// 检查是否应该使用本地部署
+try {
+  // 可以通过localStorage中的标志来控制是否使用本地部署
+  if(localStorage.getItem('useLocalBackend') === 'true') {
+    API_BASE_URL = 'http://localhost'; // 本地部署URL
+    console.log('使用本地部署的后端 API:', API_BASE_URL);
+  } else {
+    console.log('使用Railway部署的后端 API:', API_BASE_URL);
+  }
+} catch (e) {
+  console.error('无法访问localStorage:', e);
+}
 
 // 确保在clerk-auth.js等其他文件中可以访问API_BASE_URL
 window.API_BASE_URL = API_BASE_URL;

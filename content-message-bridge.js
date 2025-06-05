@@ -8,7 +8,8 @@ console.log('[内容脚本] 已加载消息桥接脚本，可以接收来自页�
 // 允许的来源列表
 const ALLOWED_ORIGINS = [
   'http://localhost:3000',  // 本地开发环境
-  'https://day-progress-bar-backend-production.up.railway.app'  // Railway上的部署环境
+  'https://day-progress-bar-backend-production.up.railway.app',  // Railway上的部署环境
+  'http://localhost'  // 本地部署环境
 ];
 
 // 监听页面发出的消息

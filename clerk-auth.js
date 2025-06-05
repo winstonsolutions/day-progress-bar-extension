@@ -117,14 +117,17 @@ async function openSignInModal() {
   // const dashboardUrl = `http://localhost:3000/api/clerk-callback?extension_id=${extensionId}`;
 
   // 使用部署在Railway上的dashboard界面 - 修正为正确的dashboard路径
-  const dashboardUrl = `https://day-progress-bar-backend-production.up.railway.app/src/view/dashboard.html?extension_id=${extensionId}`;
+  // const dashboardUrl = `https://day-progress-bar-backend-production.up.railway.app/src/view/dashboard.html?extension_id=${extensionId}`;
+
+  // 使用本地部署的dashboard界面
+  const dashboardUrl = `http://localhost/src/view/dashboard.html?extension_id=${extensionId}`;
 
   // 关闭测试模式，使用真实的Clerk认证流程
   const testMode = false;
   let testParams = '';
 
   console.log('测试模式已关闭，将使用真实的Clerk认证流程');
-  console.log('使用部署在Railway上的dashboard页面:', dashboardUrl);
+  console.log('使用本地部署的dashboard页面:', dashboardUrl);
 
   // 构建认证URL - 重定向到部署版本
   const authUrl = `${CLERK_BASE_URL}/sign-in` +

@@ -17,6 +17,28 @@ document.addEventListener('DOMContentLoaded', async function() {
   const accountBtn = document.getElementById('account-btn');
   const notLoggedInSection = document.getElementById('not-logged-in');
   const loggedInSection = document.getElementById('logged-in');
+  const useLocalBackendCheckbox = document.getElementById('use-local-backend');
+
+  // 检查localStorage中的后端设置
+  try {
+    const useLocalBackend = localStorage.getItem('useLocalBackend') === 'true';
+    useLocalBackendCheckbox.checked = useLocalBackend;
+    console.log('使用本地后端设置:', useLocalBackend);
+  } catch (e) {
+    console.error('无法访问localStorage:', e);
+  }
+
+  // 添加本地后端切换功能
+  useLocalBackendCheckbox.addEventListener('change', function(e) {
+    const useLocal = e.target.checked;
+    localStorage.setItem('useLocalBackend', useLocal);
+    console.log('已更新后端设置，使用本地后端:', useLocal);
+
+    // 显示重新加载提示
+    const debugInfoElement = document.getElementById('debug-info');
+    debugInfoElement.style.display = 'block';
+    debugInfoElement.textContent = `已${useLocal ? '启用' : '禁用'}本地后端。请刷新扩展以应用更改。API地址现在是: ${useLocal ? 'http://localhost' : 'https://day-progress-bar-backend-production.up.railway.app'}`;
+  });
 
   // 初始化Clerk
   try {

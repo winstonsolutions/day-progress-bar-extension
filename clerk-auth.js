@@ -410,6 +410,36 @@ async function storeUserData(userData) {
   }
 }
 
+/**
+ * Initialize auth state from chrome.storage
+ * This function is needed to sync global variables with chrome.storage
+ * @param {string} token - The auth token from storage
+ * @param {Object} user - User information from storage
+ */
+async function initializeFromStorage(token, user) {
+  console.log('从存储初始化认证状态...');
+
+  try {
+    if (!token || !user) {
+      console.error('初始化失败: 缺少token或user数据');
+      return false;
+    }
+
+    // 设置全局变量
+    clerkToken = token;
+    currentUser = user;
+
+    // 验证设置是否成功
+    const authenticated = isAuthenticated();
+    console.log('从存储初始化认证状态完成, isAuthenticated():', authenticated);
+
+    return authenticated;
+  } catch (error) {
+    console.error('初始化认证状态失败:', error);
+    return false;
+  }
+}
+
 // Export auth functions
 export {
   initClerk,
@@ -418,5 +448,6 @@ export {
   isAuthenticated,
   signOut,
   storeUserData,
-  handleAuthCallback
+  handleAuthCallback,
+  initializeFromStorage
 };

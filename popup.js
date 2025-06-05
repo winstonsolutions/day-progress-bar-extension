@@ -1,5 +1,13 @@
 // Import the Clerk authentication module
-import { initClerk, openSignInModal, getCurrentUser, isAuthenticated, signOut, storeUserData } from './clerk-auth.js';
+import {
+  initClerk,
+  openSignInModal,
+  getCurrentUser,
+  isAuthenticated,
+  signOut,
+  storeUserData,
+  initializeFromStorage
+} from './clerk-auth.js';
 import { testBackendConnection } from './api.js';
 
 // 当弹出界面加载时，初始化按钮状态
@@ -77,30 +85,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     chrome.storage.onChanged.addListener((changes, namespace) => {
       console.log('Storage changed - namespace:', namespace, 'changes:', changes);
 
-      // 不再限制只检查 local 存储，检查所有命名空间
-      // 同时检查多种可能的 Clerk 相关字段
-      if (changes.clerkToken || changes.clerkUser || changes.clerk || changes.user) {
+      // 如果chrome.storage.local发生变化，并且是clerk相关的数据
+      if (namespace === 'local' &&
+         (changes.clerkToken || changes.clerkUser || changes.authComplete)) {
         console.log('检测到 Clerk 相关数据变化');
-        updateAuthenticationUI();
 
-        // 尝试从多种可能的字段中获取用户数据
-        const userData = changes.clerkUser?.newValue ||
-                         changes.clerk?.newValue?.user ||
-                         changes.user?.newValue ||
-                         changes.userData?.newValue;
-
-        // 登录成功后，保存用户数据到MongoDB
-        if (userData) {
-          console.log('找到用户数据，准备保存到MongoDB:', userData);
-
-          storeUserData(userData).then(result => {
-            console.log('用户数据已成功保存到MongoDB:', result);
-          }).catch(error => {
-            console.error('保存用户数据到MongoDB失败:', error);
-          });
-        } else {
-          console.log('未找到有效的用户数据，无法保存到MongoDB');
-        }
+        // 全面刷新状态，重新初始化Clerk
+        initializeClerkState().then(() => {
+          // 初始化成功后检查认证状态并更新UI
+          checkAuthAndUpdateUI();
+        });
       }
     });
   }
@@ -152,6 +146,12 @@ document.addEventListener('DOMContentLoaded', async function() {
       testBackendButton.textContent = 'Test Backend Connection';
     }
   });
+
+  // 在页面加载时也尝试初始化Clerk状态
+  await initializeClerkState();
+
+  // 初始化UI
+  checkAuthAndUpdateUI();
 });
 
 // 更新认证状态UI
@@ -273,5 +273,67 @@ function updateButtonState(button, isHidden) {
   } else {
     // 隐藏进度条按钮 - 灰色次要按钮
     button.className = 'secondary-btn';
+  }
+}
+
+// 初始化Clerk状态的函数 - 确保Clerk全局变量与存储同步
+async function initializeClerkState() {
+  try {
+    // 从存储中获取最新的clerk数据
+    const storedData = await chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete']);
+
+    // 如果有clerk数据，确保clerk-auth.js中的全局状态被正确设置
+    if (storedData.clerkToken && storedData.clerkUser && storedData.authComplete) {
+      console.log('从storage获取到认证数据，初始化clerk-auth状态');
+
+      // 这里需要访问clerk-auth.js中的函数来设置全局状态
+      // 这个函数需要在clerk-auth.js中添加，用于手动设置认证状态
+      if (typeof initializeFromStorage === 'function') {
+        await initializeFromStorage(storedData.clerkToken, storedData.clerkUser);
+        console.log('成功初始化clerk-auth状态');
+        return true;
+      } else {
+        console.error('initializeFromStorage函数不可用，请确保clerk-auth.js已正确加载');
+        return false;
+      }
+    } else {
+      console.log('存储中没有完整的认证数据');
+      return false;
+    }
+  } catch (error) {
+    console.error('初始化Clerk状态失败:', error);
+    return false;
+  }
+}
+
+// 检查认证状态并更新UI
+function checkAuthAndUpdateUI() {
+  // 检查认证状态
+  if (isAuthenticated()) {
+    const user = getCurrentUser();
+    console.log('用户已认证:', user);
+
+    // 更新UI显示用户信息
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('user-section').style.display = 'block';
+
+    // 设置用户信息
+    if (user) {
+      document.querySelector('.user-name').textContent = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User';
+      document.querySelector('.user-email').textContent = user.email || '';
+
+      // 尝试保存用户数据到MongoDB
+      console.log('找到用户数据，准备保存到MongoDB:', user);
+      storeUserData({
+        firstName: user.firstName,
+        lastName: user.lastName
+      }).catch(error => {
+        console.error('保存用户数据到MongoDB失败:', error);
+      });
+    }
+  } else {
+    console.log('User is not authenticated');
+    document.getElementById('auth-section').style.display = 'block';
+    document.getElementById('user-section').style.display = 'none';
   }
 }

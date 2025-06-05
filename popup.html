@@ -171,6 +171,8 @@
     <div id="debug-info" class="debug-info"></div>
   </div>
 
+  <!-- 确保先加载clerk-auth.js，后加载popup.js -->
+  <script src="clerk-auth.js" type="module"></script>
   <script src="popup.js" type="module"></script>
   <script src="get-extension-id.js"></script>
 </body>

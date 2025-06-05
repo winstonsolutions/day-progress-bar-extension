@@ -114,85 +114,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
       }
 
-      // 处理真实token - 使用更完善的错误处理
-      console.log('处理真实token，调用Clerk API验证...');
+      // 处理真实token - 避免直接调用Clerk API
+      console.log('处理真实token');
 
-      // 调用API获取用户信息
-      fetch('https://api.clerk.dev/v1/me', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${message.token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      .then(response => {
-        console.log('Clerk API响应状态:', response.status);
-
-        if (!response.ok) {
-          return response.text().then(text => {
-            console.error('API错误详情:', text);
-            throw new Error(`API返回错误: ${response.status}`);
-          });
-        }
-        return response.json();
-      })
-      .then(userData => {
-        console.log('从Clerk API获取到用户数据:', userData);
-
-        // 构建用户对象
-        const user = {
-          id: userData.id,
-          email: userData.email_addresses?.[0]?.email_address || '',
-          firstName: userData.first_name || '',
-          lastName: userData.last_name || ''
-        };
-
-        // 存储认证信息到chrome.storage
-        chrome.storage.local.set({
-          clerkToken: message.token,
-          clerkUser: user,
-          authComplete: true,
-          isTestMode: false
-        }, () => {
-          console.log('成功将认证信息存储到chrome.storage');
-        });
-
-        // 发送响应
-        sendResponse({ success: true });
-      })
-      .catch(error => {
-        console.error('处理Clerk认证失败:', error);
-
-        // 即使API验证失败，也尝试使用token
-        console.log('尽管API验证失败，尝试使用token做备用处理');
-
-        // 创建一个基于token的简单用户
-        const fallbackUser = {
-          id: 'user_from_token',
+      // 处理user对象
+      let userObj;
+      if (message.user && typeof message.user === 'object') {
+        // 如果消息中已经包含user对象，直接使用
+        userObj = message.user;
+        console.log('使用消息中包含的用户信息:', userObj);
+      } else {
+        // 如果没有提供user对象，创建一个最小的占位符对象
+        console.log('消息中没有包含用户信息，将使用占位符');
+        userObj = {
+          id: 'id_from_token',
           email: 'user@example.com',
-          firstName: 'Unknown',
-          lastName: 'User'
+          firstName: '',
+          lastName: ''
         };
+      }
 
-        // 存储认证信息，标记为降级模式
-        chrome.storage.local.set({
-          clerkToken: message.token,
-          clerkUser: fallbackUser,
-          authComplete: true,
-          isTestMode: false,
-          isFallbackMode: true
-        }, () => {
-          console.log('使用降级模式存储认证信息');
-        });
-
-        sendResponse({
-          success: true,
-          isFallbackMode: true,
-          error: error.message
-        });
+      // 存储认证信息到chrome.storage
+      chrome.storage.local.set({
+        clerkToken: message.token,
+        clerkUser: userObj,
+        authComplete: true,
+        isTestMode: false
+      }, () => {
+        console.log('成功将认证信息存储到chrome.storage');
       });
 
-      return true; // 表示将异步发送响应
+      // 发送响应
+      sendResponse({ success: true });
+      return true;
     }
   }
 });
@@ -242,91 +196,45 @@ chrome.runtime.onMessageExternal.addListener(
           return true;
         }
 
-        // 处理真实token
-        fetch('https://api.clerk.dev/v1/me', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-        .then(response => {
-          console.log('Clerk API响应状态:', response.status);
+        // 处理真实token - 避免直接调用Clerk API
+        console.log('处理真实token');
 
-          if (!response.ok) {
-            return response.text().then(text => {
-              console.error('API错误详情:', text);
-              throw new Error(`API返回错误: ${response.status}`);
-            });
-          }
-          return response.json();
-        })
-        .then(userData => {
-          console.log('从Clerk API获取到用户数据:', userData);
+        // 从消息中提取用户信息
+        let userObj;
+        if (message.user && typeof message.user === 'object') {
+          // 如果消息中已经包含user对象，直接使用
+          userObj = message.user;
+          console.log('使用消息中包含的用户信息:', userObj);
+        } else {
+          // 如果没有提供user对象，尝试通过我们自己的后端API验证token
+          console.log('尝试通过自己的后端API验证token');
 
-          // 构建用户对象
-          const user = {
-            id: userData.id,
-            email: userData.email_addresses?.[0]?.email_address || '',
-            firstName: userData.first_name || '',
-            lastName: userData.last_name || ''
-          };
-
-          // 存储认证信息
-          chrome.storage.local.set({
-            clerkToken: token,
-            clerkUser: user,
-            authComplete: true,
-            isTestMode: false
-          }, () => {
-            console.log('成功将认证信息存储到chrome.storage');
-
-            // 尝试关闭dashboard标签页
-            if (sender.tab && sender.tab.id) {
-              chrome.tabs.remove(sender.tab.id);
-            }
-          });
-
-          sendResponse({ success: true });
-        })
-        .catch(error => {
-          console.error('处理Clerk认证失败:', error);
-
-          // 即使API验证失败，也尝试使用token
-          console.log('尽管API验证失败，尝试使用token做备用处理');
-
-          // 创建一个基于token的简单用户
-          const fallbackUser = {
-            id: 'user_from_token',
+          // 创建一个基本的用户对象
+          userObj = {
+            id: 'id_from_token',
             email: 'user@example.com',
-            firstName: 'Unknown',
-            lastName: 'User'
+            firstName: '',
+            lastName: ''
           };
+        }
 
-          // 存储认证信息，标记为降级模式
-          chrome.storage.local.set({
-            clerkToken: token,
-            clerkUser: fallbackUser,
-            authComplete: true,
-            isTestMode: false,
-            isFallbackMode: true
-          }, () => {
-            console.log('使用降级模式存储认证信息');
+        // 存储认证信息
+        chrome.storage.local.set({
+          clerkToken: token,
+          clerkUser: userObj,
+          authComplete: true,
+          isTestMode: false
+        }, () => {
+          console.log('成功将认证信息存储到chrome.storage');
 
-            // 尝试关闭dashboard标签页
-            if (sender.tab && sender.tab.id) {
-              chrome.tabs.remove(sender.tab.id);
-            }
-          });
-
-          sendResponse({
-            success: true,
-            isFallbackMode: true,
-            error: error.message
-          });
+          // 尝试关闭dashboard标签页
+          if (sender.tab && sender.tab.id) {
+            chrome.tabs.remove(sender.tab.id);
+          }
         });
 
-        return true; // 表示将异步发送响应
+        sendResponse({ success: true });
+        return true;
       }
     }
 

@@ -234,6 +234,9 @@
     // 全局API基础URL
     window.API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app';
 
+    // 添加Clerk基础URL
+    window.CLERK_BASE_URL = 'https://glad-trout-24.accounts.dev';
+
     // 定义进度更新函数，认证回调JS会通过window.updateAuthStatus调用
     window.updateAuthStatus = function(stage, status, progress) {
       const statusMap = {

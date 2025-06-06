@@ -110,43 +110,11 @@ async function openSignInModal() {
   const extensionId = chrome.runtime.id;
   console.log('扩展ID:', extensionId);
 
-  // 使用API后端部署的中间重定向页面
-  const redirectorUrl = 'https://day-progress-bar-backend-production.up.railway.app/auth/clerk-redirect';
-
-  // 本地测试应用URL（已注释掉，改为使用部署版本）
-  // const dashboardUrl = `http://localhost:3000/api/clerk-callback?extension_id=${extensionId}`;
-
-  // 使用部署在Railway上的dashboard界面 - 修正为正确的dashboard路径
-  // const dashboardUrl = `https://day-progress-bar-backend-production.up.railway.app/src/view/dashboard.html?extension_id=${extensionId}`;
-
-  // 使用本地部署的dashboard界面 - 根据后端路由规则修正
-  // const dashboardUrl = `http://localhost/dashboard?extension_id=${extensionId}`;
-
-  // 使用本地部署的dashboard界面 - 使用3000端口
-  // 注意：使用"token"作为参数名而不是"__clerk_token"，因为后端dashboard页面期望这个参数名
-  // const dashboardUrl = `http://localhost:3000/dashboard?extension_id=${extensionId}`;
-
-  // 使用本地后端的clerk回调处理程序，它会正确转换token并重定向到dashboard
-  // const callbackUrl = `http://localhost:3000/auth/clerk-callback?extension_id=${extensionId}`;
-
   // 直接使用扩展内部的auth-callback.html页面处理认证回调
-  // const callbackUrl = `chrome-extension://${extensionId}/auth-callback.html?extension_id=${extensionId}`;
-
-  // 使用后端的clerk-callback路由处理认证，确保包含扩展ID
-  // 注意：这里修改为强制包含__clerk_db_jwt参数，这是Clerk SDK内部使用的令牌参数名
-  // const callbackUrl = `http://localhost:3000/auth/clerk-callback?extension_id=${extensionId}`;
-
-  // 使用Railway部署的后端URL
-  const callbackUrl = `https://day-progress-bar-backend-production.up.railway.app/auth/clerk-callback?extension_id=${extensionId}`;
-
-  //测试，登陆成功重定向到https://www.nytimes.com/ca/
-  // const callbackUrl = `https://www.nytimes.com/ca/`;
-  // 关闭测试模式，使用真实的Clerk认证流程
-  const testMode = false;
-  let testParams = '';
+  const callbackUrl = `chrome-extension://${extensionId}/auth-callback.html?extension_id=${extensionId}`;
 
   console.log('测试模式已关闭，将使用真实的Clerk认证流程');
-  console.log('使用后端clerk-callback处理认证:', callbackUrl);
+  console.log('直接使用扩展的auth-callback.html处理认证:', callbackUrl);
 
   // 构建Clerk身份验证URL (注意这里包含了多种可能的令牌参数名，增加成功率)
   // Clerk在重定向时可能使用__clerk_token或token或__clerk_db_jwt
@@ -168,7 +136,7 @@ async function openSignInModal() {
   console.log('重要提示: 在Clerk设置中，还必须:');
   console.log('1. 确保"JWT Template"已正确配置');
   console.log('2. 在Clerk仪表板中允许跨域(CORS)请求');
-  console.log('3. 在Production URL中添加您的本地开发URL (例如: http://localhost:3000)');
+  console.log('3. 在"允许的重定向URL"中添加扩展URL (chrome-extension://${extensionId}/auth-callback.html)');
   console.log('4. 确保"Session Token Template"正确设置，启用了token传递');
 
   // 重要：在打开认证页面前，存储一个状态标记

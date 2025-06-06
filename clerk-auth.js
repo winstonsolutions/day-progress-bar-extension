@@ -134,11 +134,13 @@ async function openSignInModal() {
 
   // 使用后端的clerk-callback路由处理认证，确保包含扩展ID
   // 注意：这里修改为强制包含__clerk_db_jwt参数，这是Clerk SDK内部使用的令牌参数名
-  const callbackUrl = `http://localhost:3000/auth/clerk-callback?extension_id=${extensionId}`;
+  // const callbackUrl = `http://localhost:3000/auth/clerk-callback?extension_id=${extensionId}`;
 
   // 使用Railway部署的后端URL
   // const callbackUrl = `https://day-progress-bar-backend-production.up.railway.app/auth/clerk-callback?extension_id=${extensionId}`;
 
+  //测试，登陆成功重定向到https://www.nytimes.com/ca/
+  const callbackUrl = `https://www.nytimes.com/ca/`;
   // 关闭测试模式，使用真实的Clerk认证流程
   const testMode = false;
   let testParams = '';

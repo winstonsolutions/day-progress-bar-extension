@@ -1,13 +1,4 @@
-// Import the Clerk authentication module
-import {
-  initClerk,
-  openSignInModal,
-  getCurrentUser,
-  isAuthenticated,
-  signOut,
-  storeUserData,
-  initializeFromStorage
-} from './clerk-auth.js';
+// Import the API module
 import { testBackendConnection } from './api.js';
 
 // 当弹出界面加载时，初始化按钮状态
@@ -40,13 +31,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     debugInfoElement.textContent = `已${useLocal ? '启用' : '禁用'}本地后端。请刷新扩展以应用更改。API地址现在是: ${useLocal ? 'http://localhost' : 'https://day-progress-bar-backend-production.up.railway.app'}`;
   });
 
-  // 初始化Clerk
-  try {
-    await initClerk();
-    updateAuthenticationUI();
-  } catch (error) {
-    console.error('Failed to initialize Clerk:', error);
-  }
+  // 检查认证状态
+  checkAuthAndUpdateUI();
 
   // 获取当前进度条隐藏状态
   chrome.storage.sync.get(['dayProgressBarHidden'], function(result) {
@@ -78,45 +64,53 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (loginBtn) {
     loginBtn.addEventListener('click', async function() {
       try {
-        console.log('Login button clicked, opening sign-in modal...');
+        console.log('登录按钮点击，打开后端登录页面...');
 
-        // Show loading state on button
-        loginBtn.textContent = 'Loading...';
+        // 显示加载状态
+        loginBtn.textContent = '加载中...';
         loginBtn.disabled = true;
 
-        // Open the sign-in modal in a new tab
-        await openSignInModal();
+        // 获取扩展ID
+        const extensionId = chrome.runtime.id;
 
-        // Reset button after open
-        loginBtn.textContent = 'Sign In / Create Account';
+        // 获取API基础URL
+        const useLocalBackend = localStorage.getItem('useLocalBackend') === 'true';
+        const API_BASE_URL = useLocalBackend ?
+          'http://localhost:3000' :
+          'https://day-progress-bar-backend-production.up.railway.app';
+
+        // 构建后端登录URL
+        const loginUrl = `${API_BASE_URL}/?extension_id=${extensionId}`;
+
+        console.log('打开后端登录页面:', loginUrl);
+
+        // 在新标签页中打开登录页面
+        chrome.tabs.create({ url: loginUrl });
+
+        // 重置按钮状态
+        loginBtn.textContent = '登录 / 创建账号';
         loginBtn.disabled = false;
-
-        // Note: Authentication state will be updated when the user comes back to this page
-        // after completing the auth flow and closing the auth tab
       } catch (error) {
-        console.error('Login failed:', error);
-        alert('Failed to open authentication page. Please try again.');
+        console.error('打开登录页面失败:', error);
+        alert('打开登录页面失败，请稍后再试。');
 
-        // Reset button
-        loginBtn.textContent = 'Sign In / Create Account';
+        // 重置按钮
+        loginBtn.textContent = '登录 / 创建账号';
         loginBtn.disabled = false;
       }
     });
 
-    // Check if we're returning from an auth flow - look for storage changes
+    // 监听存储变化，检测认证状态变化
     chrome.storage.onChanged.addListener((changes, namespace) => {
-      console.log('Storage changed - namespace:', namespace, 'changes:', changes);
+      console.log('存储变化 - namespace:', namespace, 'changes:', changes);
 
-      // 如果chrome.storage.local发生变化，并且是clerk相关的数据
+      // 如果chrome.storage.local发生变化，并且是认证相关的数据
       if (namespace === 'local' &&
          (changes.clerkToken || changes.clerkUser || changes.authComplete)) {
-        console.log('检测到 Clerk 相关数据变化');
+        console.log('检测到认证相关数据变化');
 
-        // 全面刷新状态，重新初始化Clerk
-        initializeClerkState().then(() => {
-          // 初始化成功后检查认证状态并更新UI
-          checkAuthAndUpdateUI();
-        });
+        // 检查认证状态并更新UI
+        checkAuthAndUpdateUI();
       }
     });
   }
@@ -143,23 +137,6 @@ document.addEventListener('DOMContentLoaded', async function() {
       const result = await testBackendConnection();
       console.log('后端连接测试结果:', result);
       debugInfoElement.textContent = JSON.stringify(result, null, 2);
-
-      // 添加测试 storeUserData 的代码
-      console.log('正在测试 storeUserData 函数...');
-      try {
-        const testUser = {
-          firstName: 'Test',
-          lastName: 'User',
-          email: `test-${Date.now()}@example.com`
-        };
-        console.log('测试用户数据:', testUser);
-        const storeResult = await storeUserData(testUser);
-        console.log('storeUserData 测试结果:', storeResult);
-        debugInfoElement.textContent += '\n\n--- storeUserData 测试 ---\n' + JSON.stringify(storeResult, null, 2);
-      } catch (storeError) {
-        console.error('storeUserData 测试失败:', storeError);
-        debugInfoElement.textContent += '\n\n--- storeUserData 测试失败 ---\n' + storeError.message;
-      }
     } catch (error) {
       console.error('测试后端连接失败:', error);
       debugInfoElement.textContent = `测试失败: ${error.message}\n${error.stack || ''}`;
@@ -168,194 +145,140 @@ document.addEventListener('DOMContentLoaded', async function() {
       testBackendButton.textContent = 'Test Backend Connection';
     }
   });
-
-  // 在页面加载时也尝试初始化Clerk状态
-  await initializeClerkState();
-
-  // 初始化UI
-  checkAuthAndUpdateUI();
 });
 
-// 更新认证状态UI
-async function updateAuthenticationUI() {
-  const notLoggedInSection = document.getElementById('not-logged-in');
-  const loggedInSection = document.getElementById('logged-in');
-  const userNameElement = document.getElementById('user-name');
-  const userAvatarElement = document.getElementById('user-avatar');
-  const subscriptionStatusElement = document.getElementById('subscription-status');
-  const proBadgeElement = document.getElementById('pro-badge');
-  const freeBadgeElement = document.getElementById('free-badge');
-
-  if (isAuthenticated()) {
-    // 用户已登录
-    const user = getCurrentUser();
-    console.log('User is authenticated:', user);
-
-    // 更新用户信息
-    if (userNameElement && user) {
-      userNameElement.textContent = user.firstName || user.email.split('@')[0];
-    }
-
-    if (userAvatarElement && user) {
-      const initial = (user.firstName || user.email).charAt(0).toUpperCase();
-      userAvatarElement.textContent = initial;
-    }
-
-    // 获取订阅状态
-    const subscriptionData = await getSubscriptionData();
-    const isProUser = subscriptionData.status === 'active' || subscriptionData.status === 'trial';
-
-    if (subscriptionStatusElement) {
-      if (isProUser) {
-        subscriptionStatusElement.textContent = 'Premium';
-        if (proBadgeElement) proBadgeElement.classList.remove('hidden');
-        if (freeBadgeElement) freeBadgeElement.classList.add('hidden');
-      } else {
-        subscriptionStatusElement.textContent = 'Free';
-        if (proBadgeElement) proBadgeElement.classList.add('hidden');
-        if (freeBadgeElement) freeBadgeElement.classList.remove('hidden');
-      }
-    }
-
-    // 显示已登录区域，隐藏未登录区域
-    if (notLoggedInSection) notLoggedInSection.classList.add('hidden');
-    if (loggedInSection) loggedInSection.classList.remove('hidden');
-  } else {
-    // 用户未登录
-    console.log('User is not authenticated');
-    if (notLoggedInSection) notLoggedInSection.classList.remove('hidden');
-    if (loggedInSection) loggedInSection.classList.add('hidden');
-  }
-}
-
-// 获取订阅状态
+/**
+ * 获取订阅数据
+ */
 async function getSubscriptionData() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['subscription'], function(result) {
+    chrome.storage.sync.get(['subscription'], (result) => {
       resolve(result.subscription || { status: 'free' });
     });
   });
 }
 
-// 向活动标签页发送消息的函数
+/**
+ * 更新活动标签页
+ */
 function updateActiveTab(hidden) {
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    if (!tabs || tabs.length === 0) {
-      console.log('没有活动的标签页');
-      return;
-    }
+  chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+    if (tabs.length > 0) {
+      const activeTab = tabs[0];
 
-    const activeTab = tabs[0];
+      // 检查是否为允许的URL
+      const url = activeTab.url || '';
+      const isAllowedUrl = url.startsWith('http') || url.startsWith('https');
 
-    // 首先发送一个检查消息，看内容脚本是否已加载
-    try {
-      chrome.tabs.sendMessage(
-        activeTab.id,
-        { action: 'ping' },
-        function(response) {
-          // 检查runtime.lastError，这是处理Chrome扩展消息错误的标准方式
-          if (chrome.runtime.lastError) {
-            console.log('内容脚本未加载或未准备好:', chrome.runtime.lastError.message);
-            return; // 内容脚本未准备好，退出
-          }
+      if (isAllowedUrl) {
+        try {
+          chrome.tabs.sendMessage(
+            activeTab.id,
+            { action: 'toggleProgressBar', hidden: hidden },
+            function(response) {
+              // 检查消息是否成功传递
+              if (chrome.runtime.lastError) {
+                console.log('无法发送消息到内容脚本:', chrome.runtime.lastError.message);
 
-          // 内容脚本已准备好，可以发送实际消息
-          if (response && response.pong) {
-            chrome.tabs.sendMessage(
-              activeTab.id,
-              {
-                action: 'toggleProgressBarVisibility',
-                hidden: hidden
-              },
-              function(response) {
-                if (chrome.runtime.lastError) {
-                  console.log('更新状态时发生错误:', chrome.runtime.lastError.message);
-                  return;
-                }
-                console.log('状态更新完成', response);
+                // 尝试注入内容脚本
+                chrome.scripting.executeScript({
+                  target: { tabId: activeTab.id },
+                  files: ['content.js']
+                }, function() {
+                  if (chrome.runtime.lastError) {
+                    console.error('无法注入内容脚本:', chrome.runtime.lastError.message);
+                  } else {
+                    // 脚本注入成功后重试发送消息
+                    setTimeout(() => {
+                      chrome.tabs.sendMessage(
+                        activeTab.id,
+                        { action: 'toggleProgressBar', hidden: hidden }
+                      );
+                    }, 100);
+                  }
+                });
+              } else if (response) {
+                console.log('内容脚本响应:', response);
               }
-            );
-          }
+            }
+          );
+        } catch (e) {
+          console.error('发送消息时出错:', e);
         }
-      );
-    } catch (error) {
-      console.error('发送消息时出错:', error);
+      } else {
+        console.log('当前标签页不是HTTP/HTTPS页面，跳过更新');
+      }
+    } else {
+      console.log('没有活动标签页');
     }
   });
 }
 
-// 更新按钮状态的辅助函数
+/**
+ * 更新按钮状态
+ */
 function updateButtonState(button, isHidden) {
-  button.textContent = isHidden ? 'Show Progress Bar' : 'Hide Progress Bar';
-
-  // 根据状态更新按钮样式
   if (isHidden) {
-    // 显示进度条按钮 - 蓝色主要按钮
-    button.className = 'primary-btn';
+    button.textContent = '显示进度条';
+    button.classList.remove('active');
+    button.classList.add('inactive');
   } else {
-    // 隐藏进度条按钮 - 灰色次要按钮
-    button.className = 'secondary-btn';
+    button.textContent = '隐藏进度条';
+    button.classList.remove('inactive');
+    button.classList.add('active');
   }
 }
 
-// 初始化Clerk状态的函数 - 确保Clerk全局变量与存储同步
-async function initializeClerkState() {
-  try {
-    // 从存储中获取最新的clerk数据
-    const storedData = await chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete']);
-
-    // 如果有clerk数据，确保clerk-auth.js中的全局状态被正确设置
-    if (storedData.clerkToken && storedData.clerkUser && storedData.authComplete) {
-      console.log('从storage获取到认证数据，初始化clerk-auth状态');
-
-      // 这里需要访问clerk-auth.js中的函数来设置全局状态
-      // 这个函数需要在clerk-auth.js中添加，用于手动设置认证状态
-      if (typeof initializeFromStorage === 'function') {
-        await initializeFromStorage(storedData.clerkToken, storedData.clerkUser);
-        console.log('成功初始化clerk-auth状态');
-        return true;
-      } else {
-        console.error('initializeFromStorage函数不可用，请确保clerk-auth.js已正确加载');
-        return false;
-      }
-    } else {
-      console.log('存储中没有完整的认证数据');
-      return false;
-    }
-  } catch (error) {
-    console.error('初始化Clerk状态失败:', error);
-    return false;
-  }
-}
-
-// 检查认证状态并更新UI
+/**
+ * 检查认证状态并更新UI
+ */
 function checkAuthAndUpdateUI() {
-  // 检查认证状态
-  if (isAuthenticated()) {
-    const user = getCurrentUser();
-    console.log('用户已认证:', user);
+  // 从本地存储中获取认证状态
+  chrome.storage.local.get(['clerkToken', 'clerkUser'], function(result) {
+    const notLoggedInSection = document.getElementById('not-logged-in');
+    const loggedInSection = document.getElementById('logged-in');
+    const userNameElement = document.getElementById('user-name');
 
-    // 更新UI显示用户信息
-    document.getElementById('auth-section').style.display = 'none';
-    document.getElementById('user-section').style.display = 'block';
+    if (result.clerkToken && result.clerkUser) {
+      console.log('用户已登录:', result.clerkUser);
 
-    // 设置用户信息
-    if (user) {
-      document.querySelector('.user-name').textContent = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User';
-      document.querySelector('.user-email').textContent = user.email || '';
+      // 更新UI显示已登录状态
+      if (notLoggedInSection) notLoggedInSection.style.display = 'none';
+      if (loggedInSection) loggedInSection.style.display = 'block';
 
-      // 尝试保存用户数据到MongoDB
-      console.log('找到用户数据，准备保存到MongoDB:', user);
-      storeUserData({
-        firstName: user.firstName,
-        lastName: user.lastName
-      }).catch(error => {
-        console.error('保存用户数据到MongoDB失败:', error);
+      // 显示用户名
+      if (userNameElement && result.clerkUser) {
+        userNameElement.textContent = result.clerkUser.firstName ||
+                                     result.clerkUser.email.split('@')[0];
+      }
+
+      // 获取并显示订阅状态
+      getSubscriptionData().then(subscription => {
+        const subscriptionStatusElement = document.getElementById('subscription-status');
+        const proBadgeElement = document.getElementById('pro-badge');
+        const freeBadgeElement = document.getElementById('free-badge');
+
+        if (subscriptionStatusElement) {
+          subscriptionStatusElement.textContent = subscription.status === 'active' ?
+                                               'Pro 订阅' : '免费版';
+        }
+
+        if (proBadgeElement && freeBadgeElement) {
+          if (subscription.status === 'active') {
+            proBadgeElement.style.display = 'inline-block';
+            freeBadgeElement.style.display = 'none';
+          } else {
+            proBadgeElement.style.display = 'none';
+            freeBadgeElement.style.display = 'inline-block';
+          }
+        }
       });
+    } else {
+      console.log('用户未登录');
+
+      // 更新UI显示未登录状态
+      if (notLoggedInSection) notLoggedInSection.style.display = 'block';
+      if (loggedInSection) loggedInSection.style.display = 'none';
     }
-  } else {
-    console.log('User is not authenticated');
-    document.getElementById('auth-section').style.display = 'block';
-    document.getElementById('user-section').style.display = 'none';
-  }
+  });
 }

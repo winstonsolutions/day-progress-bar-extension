@@ -1,183 +1,212 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Day Progress Bar</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Work Hours Progress Bar</title>
   <style>
     body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
       width: 300px;
-      padding: 15px;
-      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+      color: #333;
+    }
+    .container {
+      padding: 16px;
     }
     h1 {
       font-size: 16px;
-      margin-top: 0;
-      margin-bottom: 15px;
-      color: #202124;
+      margin: 0 0 16px;
+      font-weight: 600;
     }
     button {
-      display: block;
-      width: 100%;
-      height: 36px;
-      line-height: 36px;
-      margin-bottom: 10px;
+      padding: 8px 16px;
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      font-weight: 500;
       font-size: 14px;
-      text-align: center;
-      transition: background-color 0.2s;
+      margin-bottom: 10px;
+      width: 100%;
+      text-align: left;
     }
-    .primary-btn {
-      background-color: #4285F4;
+    button.active {
+      background-color: #007bff;
       color: white;
     }
-    .primary-btn:hover {
-      background-color: #3b78e7;
+    button.inactive {
+      background-color: #e9ecef;
+      color: #495057;
     }
-    .secondary-btn {
-      background-color: #f1f3f4;
-      color: #5f6368;
+    button.active:hover {
+      background-color: #0069d9;
     }
-    .secondary-btn:hover {
-      background-color: #e3e5e8;
+    button.inactive:hover {
+      background-color: #dae0e5;
     }
-    .account-section {
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 1px solid #e8eaed;
+    .separator {
+      border-top: 1px solid #e9ecef;
+      margin: 16px 0;
     }
-    .account-info {
+    .footer {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #6c757d;
+    }
+    .user-info {
       display: flex;
       align-items: center;
-      margin-bottom: 15px;
+      margin-bottom: 16px;
     }
-    .user-avatar {
+    .avatar {
       width: 32px;
       height: 32px;
+      background-color: #007bff;
+      color: white;
       border-radius: 50%;
-      background-color: #e8eaed;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-right: 10px;
-      color: #5f6368;
       font-weight: bold;
+      margin-right: 10px;
     }
     .user-details {
       flex-grow: 1;
     }
     .user-name {
-      font-weight: 500;
+      font-weight: 600;
       font-size: 14px;
-      color: #202124;
     }
-    .user-status {
+    .subscription-status {
       font-size: 12px;
-      color: #5f6368;
+      color: #6c757d;
     }
-    .pro-badge {
-      font-size: 10px;
-      background-color: #1a73e8;
-      color: white;
+    .badge {
+      display: inline-block;
       padding: 2px 6px;
       border-radius: 10px;
-      margin-left: 5px;
-    }
-    .free-badge {
       font-size: 10px;
-      background-color: #5f6368;
-      color: white;
-      padding: 2px 6px;
-      border-radius: 10px;
       margin-left: 5px;
     }
-    .hidden {
-      display: none;
+    .badge-pro {
+      background-color: #28a745;
+      color: white;
     }
-    .clerk-setup-link {
-      display: block;
+    .badge-free {
+      background-color: #f8f9fa;
+      color: #6c757d;
+      border: 1px solid #dee2e6;
+    }
+    .login-button {
+      background-color: #007bff;
+      color: white;
+      text-align: center;
+    }
+    .login-button:hover {
+      background-color: #0069d9;
+    }
+    .logout-button {
+      background-color: transparent;
+      color: #6c757d;
+      border: 1px solid #dee2e6;
       margin-top: 10px;
-      font-size: 12px;
-      color: #1a73e8;
-      text-decoration: none;
     }
-    .clerk-setup-link:hover {
-      text-decoration: underline;
+    .logout-button:hover {
+      background-color: #f8f9fa;
     }
     .debug-section {
       margin-top: 20px;
+      border-top: 1px solid #e9ecef;
       padding-top: 15px;
-      border-top: 1px dashed #e8eaed;
     }
-    .debug-title {
+    .debug-section h3 {
       font-size: 14px;
-      font-weight: 500;
-      color: #5f6368;
+      margin: 0 0 10px;
+    }
+    .debug-controls {
+      display: flex;
+      align-items: center;
       margin-bottom: 10px;
     }
-    .debug-button {
-      background-color: #0f9d58;
-      color: white;
-      padding: 8px 16px;
-      font-size: 13px;
-    }
-    .debug-info {
-      margin-top: 10px;
-      padding: 10px;
-      background-color: #f8f9fa;
-      border-radius: 4px;
+    .debug-controls label {
       font-size: 12px;
+      margin-right: 10px;
+    }
+    #debug-info {
+      display: none;
+      font-family: monospace;
+      font-size: 11px;
+      background-color: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
       max-height: 100px;
       overflow-y: auto;
+      margin-top: 10px;
       white-space: pre-wrap;
-      display: none;
+      word-break: break-all;
+    }
+    #test-backend-button {
+      font-size: 12px;
+      padding: 4px 8px;
+      background-color: #6c757d;
+      color: white;
+      width: auto;
+    }
+    #not-logged-in, #logged-in {
+      margin-bottom: 16px;
     }
   </style>
 </head>
 <body>
-  <h1>Day Progress Bar</h1>
-  <button id="toggle-btn" class="secondary-btn">Show Progress Bar</button>
+  <div class="container">
+    <h1>Work Hours Progress Bar</h1>
 
-  <!-- Account Section -->
-  <div class="account-section">
-    <!-- Not Logged In State -->
-    <div id="not-logged-in" class="hidden">
-      <button id="login-btn" class="primary-btn">Sign In / Create Account</button>
-      <a href="CLERK_SETUP_GUIDE.html" target="_blank" class="clerk-setup-link">Having trouble signing in? View Clerk Setup Guide</a>
+    <!-- 进度条控制按钮 -->
+    <button id="toggle-btn" class="active">隐藏进度条</button>
+
+    <div class="separator"></div>
+
+    <!-- 未登录状态 -->
+    <div id="not-logged-in">
+      <p style="font-size: 14px; margin-bottom: 16px;">登录以访问更多功能和设置</p>
+      <button id="login-btn" class="login-button">登录 / 创建账号</button>
     </div>
 
-    <!-- Logged In State -->
-    <div id="logged-in" class="hidden">
-      <div class="account-info">
-        <div class="user-avatar" id="user-avatar">U</div>
+    <!-- 已登录状态 -->
+    <div id="logged-in" style="display: none;">
+      <div class="user-info">
+        <div class="avatar" id="user-avatar">U</div>
         <div class="user-details">
-          <div class="user-name" id="user-name">User Name</div>
-          <div class="user-status">
-            Status: <span id="subscription-status">Free</span>
-            <span id="pro-badge" class="pro-badge hidden">PRO</span>
-            <span id="free-badge" class="free-badge hidden">FREE</span>
+          <div class="user-name" id="user-name">用户</div>
+          <div class="subscription-status">
+            <span id="subscription-status">免费版</span>
+            <span id="pro-badge" class="badge badge-pro" style="display: none;">PRO</span>
+            <span id="free-badge" class="badge badge-free">FREE</span>
           </div>
         </div>
       </div>
-      <button id="account-btn" class="secondary-btn">Manage Account</button>
+
+      <button id="account-btn">账户管理</button>
+      <button id="logout-btn" class="logout-button">退出登录</button>
+    </div>
+
+    <!-- 调试区域 -->
+    <div class="debug-section">
+      <h3>开发选项</h3>
+      <div class="debug-controls">
+        <label>
+          <input type="checkbox" id="use-local-backend"> 使用本地后端
+        </label>
+        <button id="test-backend-button">测试后端连接</button>
+      </div>
+      <div id="debug-info"></div>
+    </div>
+
+    <div class="footer">
+      Version 1.0.0 &copy; 2023 Progress Tools
     </div>
   </div>
 
-  <!-- Debug Section -->
-  <div class="debug-section">
-    <div class="debug-title">Debug Tools</div>
-    <div style="display: flex; align-items: center; margin-bottom: 10px;">
-      <input type="checkbox" id="use-local-backend" style="margin-right: 8px;">
-      <label for="use-local-backend" style="font-size: 13px; color: #5f6368;">使用本地后端 (localhost)</label>
-    </div>
-    <button id="test-backend-button" class="debug-button">Test Backend Connection</button>
-    <div id="debug-info" class="debug-info"></div>
-  </div>
-
-  <!-- 确保先加载clerk-auth.js，后加载popup.js -->
-  <script src="clerk-auth.js" type="module"></script>
-  <script src="popup.js" type="module"></script>
-  <script src="get-extension-id.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

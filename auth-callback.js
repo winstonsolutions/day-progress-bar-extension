@@ -1,4 +1,3 @@
-import { handleAuthCallback } from './clerk-auth.js';
 import { createOrUpdateUser } from './api.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -74,189 +73,48 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   try {
-    // 如果是从中间重定向页面来的，记录下来
-    if (document.referrer && document.referrer.includes('day-progress-bar-backend-production.up.railway.app')) {
-      addDebugStep('来自中间重定向页面', { referrer: document.referrer });
-    }
-
-    // Get token and user info from URL params
+    // 从URL获取token和用户信息
     const urlParams = new URLSearchParams(window.location.search);
 
-    // 尝试多种可能的令牌参数名称，按优先顺序
-    let token = urlParams.get('__clerk_token') ||
+    // 尝试多种可能的令牌参数名称
+    const token = urlParams.get('__clerk_token') ||
                urlParams.get('token') ||
                urlParams.get('__clerk_db_jwt') ||
                urlParams.get('clerk_token') ||
                urlParams.get('access_token');
 
-    // 尝试从URL哈希中获取token（有时Clerk会将token放在URL哈希而不是查询参数中）
-    if (!token && window.location.hash) {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      token = hashParams.get('token') ||
-              hashParams.get('__clerk_token') ||
-              hashParams.get('__clerk_db_jwt') ||
-              hashParams.get('access_token');
-    }
+    // 尝试获取用户信息
+    const userId = urlParams.get('user_id');
+    const email = urlParams.get('email');
+    const firstName = urlParams.get('first_name') || '';
+    const lastName = urlParams.get('last_name') || '';
 
-    addDebugStep('查找并解析令牌', {
+    addDebugStep('解析URL参数', {
       hasToken: !!token,
       tokenPreview: token ? `${token.substring(0, 10)}...` : null,
-      tokenLength: token ? token.length : 0,
-      fullUrl: window.location.href,
-      search: window.location.search,
-      hash: window.location.hash,
-      allParams: Object.fromEntries([...urlParams.entries()])
+      userId,
+      email,
+      firstName,
+      lastName
     });
 
-    if (token) {
-      updateStatus('token', 'success', 25);
-    } else {
-      updateStatus('token', 'pending', 15);
-      addDebugStep('URL中未找到令牌，尝试其他来源');
-
-      // 尝试从localStorage/sessionStorage获取token
-      // Clerk有时会将token存储在这里
-      const storageLocations = [
-        { name: '__clerk_client_jwt', storage: localStorage },
-        { name: '__clerk_client_jwt', storage: sessionStorage },
-        { name: 'clerk_jwt', storage: localStorage },
-        { name: 'clerk_jwt', storage: sessionStorage }
-      ];
-
-      for (const loc of storageLocations) {
-        const storageItem = loc.storage.getItem(loc.name);
-        if (storageItem) {
-          try {
-            const sessionData = JSON.parse(storageItem);
-            if (sessionData && sessionData.token) {
-              token = sessionData.token;
-              addDebugStep('在浏览器存储中找到令牌', { source: `${loc.storage === localStorage ? 'localStorage' : 'sessionStorage'}.${loc.name}` });
-              updateStatus('token', 'success', 25);
-              break;
-            }
-          } catch (e) {
-            addDebugStep(`解析存储令牌失败: ${loc.name}`, { error: e.message });
-          }
-        }
-      }
-
-      // 如果仍然没有token，查看chrome.storage
-      if (!token) {
-        try {
-          const chromeStorageData = await chrome.storage.local.get(['clerkToken']);
-          if (chromeStorageData && chromeStorageData.clerkToken) {
-            token = chromeStorageData.clerkToken;
-            addDebugStep('在chrome.storage中找到令牌', { source: 'chrome.storage.local.clerkToken' });
-            updateStatus('token', 'success', 25);
-          }
-        } catch (e) {
-          addDebugStep('访问chrome.storage失败', { error: e.message });
-        }
-      }
-
-      // 如果仍然没有token，显示错误
-      if (!token) {
-        updateStatus('token', 'error', 15);
-        throw new Error('无法找到认证令牌。请确保Clerk域名配置正确，并且您已完成登录过程。');
-      }
+    if (!token) {
+      updateStatus('token', 'error', 15);
+      throw new Error('无法找到认证令牌。认证流程可能未完成。');
     }
 
-    addDebugStep('验证用户令牌');
-    updateStatus('api', 'pending', 35);
+    updateStatus('token', 'success', 30);
 
-    let userData;
-    let validToken = true;
-
-    try {
-      // 尝试使用客户端API获取用户信息，不需要Secret Key
-      const userResponse = await fetch(`${window.CLERK_BASE_URL || 'https://clerk.day-progress-bar.com'}/v1/client/user`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (userResponse.ok) {
-        userData = await userResponse.json();
-        addDebugStep('成功获取用户数据', {
-          userId: userData.id,
-          email: userData.email_address,
-          firstName: userData.first_name,
-          lastName: userData.last_name
-        });
-        updateStatus('api', 'success', 50);
-      } else {
-        const errorText = await userResponse.text();
-        addDebugStep('获取用户数据失败，将使用传递的用户数据', {
-          status: userResponse.status,
-          error: errorText
-        });
-        validToken = false;
-      }
-    } catch (error) {
-      addDebugStep('API请求错误', {
-        error: error.message
-      });
-      validToken = false;
-    }
-
-    // 如果API调用失败，我们使用URL参数或其他方式传递的用户信息
-    if (!validToken || !userData) {
-      updateStatus('api', 'error', 40);
-
-      // 尝试从URL参数获取基本用户信息
-      const userId = urlParams.get('user_id');
-      const email = urlParams.get('email');
-      const firstName = urlParams.get('first_name') || '';
-      const lastName = urlParams.get('last_name') || '';
-
-      if (userId && email) {
-        userData = {
-          id: userId,
-          email_address: email,
-          first_name: firstName,
-          last_name: lastName
-        };
-        addDebugStep('使用URL参数中的用户信息', userData);
-        updateStatus('api', 'success', 45);
-      } else {
-        addDebugStep('无法获取用户信息，使用默认值');
-
-        // 使用可能通过其他方式传递的数据或创建默认值
-        userData = {
-          id: 'user_' + Date.now(),
-          email_address: 'user@example.com',
-          first_name: '',
-          last_name: ''
-        };
-      }
-    }
-
-    // 构建所需的用户对象
+    // 构建用户对象
     const userObj = {
-      id: userData.id || userData.userId,
-      email: userData.email_address || userData.email || '',
-      firstName: userData.first_name || userData.firstName || '',
-      lastName: userData.last_name || userData.lastName || ''
+      id: userId || 'unknown_id',
+      email: email || 'unknown@email.com',
+      firstName: firstName || '',
+      lastName: lastName || ''
     };
 
-    addDebugStep('准备使用的用户对象', userObj);
-
-    // 添加下载日志按钮
-    const downloadBtn = document.createElement('button');
-    downloadBtn.textContent = '下载日志';
-    downloadBtn.className = 'close-button';
-    downloadBtn.style.marginLeft = '10px';
-    downloadBtn.addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(debugInfo, null, 2)], {type: 'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'auth-debug-log.json';
-      a.click();
-    });
-    document.querySelector('.button-container').appendChild(downloadBtn);
+    addDebugStep('准备用户对象', userObj);
+    updateStatus('api', 'success', 50);
 
     // 将认证信息发送到扩展的background脚本
     updateStatus('storage', 'pending', 60);
@@ -282,103 +140,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         stack: msgError.stack
       });
       updateStatus('storage', 'error', 60);
-      // 继续执行，不因这一步失败而中断
     }
 
-    // 【先尝试方法1】直接调用API保存用户到MongoDB
+    // 尝试使用API保存用户数据
     try {
-      addDebugStep('【方法1】尝试直接调用API保存用户');
+      addDebugStep('通过API保存用户');
 
-      const apiUrl = `${window.API_BASE_URL}/api/users`;
-      addDebugStep('API endpoint', apiUrl);
-
-      const directApiResponse = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // 在header中也包含令牌
-        },
-        body: JSON.stringify({
-          clerkId: userObj.id,
-          email: userObj.email,
-          firstName: userObj.firstName,
-          lastName: userObj.lastName,
-          token: token, // 附上令牌以便后端验证
-          authProvider: userData.primary_email_address_id ? 'email' : 'oauth',
-          signUpMethod: userData.verification_strategy || 'unknown'
-        })
-      });
-
-      const directApiResult = await directApiResponse.json();
-      addDebugStep('【方法1】直接API调用结果', directApiResult);
-
-      if (directApiResponse.ok) {
-        addDebugStep('【方法1】成功 - 用户数据已保存到MongoDB');
-        updateStatus('complete', 'success', 90);
-      } else {
-        addDebugStep('【方法1】失败 - 服务器返回错误');
-      }
-    } catch (directApiError) {
-      addDebugStep('【方法1】错误 - 直接API调用失败', {
-        error: directApiError.message,
-        stack: directApiError.stack
-      });
-      // 继续进行方法2，不要因为方法1失败而中断
-    }
-
-    // 【再尝试方法2】通过clerk-auth的handleAuthCallback处理认证并保存用户
-    try {
-      addDebugStep('【方法2】准备调用handleAuthCallback');
-      console.log('准备调用handleAuthCallback，token=', token ? token.substring(0, 10) + '...' : 'null', '用户=', userObj);
-
-      const user = await handleAuthCallback(token, userObj);
-
-      if (user) {
-        addDebugStep('【方法2】handleAuthCallback成功', {
-          userId: user.id,
-          email: user.email
-        });
-        updateStatus('complete', 'success', 95);
-      } else {
-        addDebugStep('【方法2】handleAuthCallback返回null');
-        console.error('handleAuthCallback调用失败，返回null');
-      }
-    } catch (authError) {
-      addDebugStep('【方法2】handleAuthCallback错误', {
-        error: authError.message,
-        stack: authError.stack
-      });
-      console.error('handleAuthCallback调用失败:', authError);
-    }
-
-    // 【最后尝试方法3】通过api.js的createOrUpdateUser函数
-    try {
-      addDebugStep('【方法3】通过createOrUpdateUser函数保存用户');
-
-      const apiUserData = {
+      const createResult = await createOrUpdateUser({
         clerkId: userObj.id,
         email: userObj.email,
         firstName: userObj.firstName,
         lastName: userObj.lastName,
-        authProvider: userData.primary_email_address_id ? 'email' : 'oauth',
-        signUpMethod: userData.verification_strategy || 'unknown',
-        token: token  // 添加token到用户数据
-      };
+        token: token
+      });
 
-      const createResult = await createOrUpdateUser(apiUserData);
-      addDebugStep('【方法3】createOrUpdateUser结果', createResult);
+      addDebugStep('createOrUpdateUser结果', createResult);
       updateStatus('complete', 'success', 100);
     } catch (createError) {
-      addDebugStep('【方法3】createOrUpdateUser错误', {
+      addDebugStep('createOrUpdateUser错误', {
         error: createError.message,
         stack: createError.stack
       });
-      // 如果所有方法失败，但我们有用户信息和token，仍认为是基本成功
-      if (userObj && token) {
-        updateStatus('complete', 'success', 100);
-      } else {
-        updateStatus('complete', 'error', 85);
-      }
+      // 即使API调用失败，也认为认证成功
+      updateStatus('complete', 'success', 100);
     }
 
     // 显示成功信息
@@ -387,6 +171,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 显示关闭按钮
     closeTabBtn.style.display = 'inline-block';
+
+    // 添加下载日志按钮
+    const downloadBtn = document.createElement('button');
+    downloadBtn.textContent = '下载日志';
+    downloadBtn.className = 'close-button';
+    downloadBtn.style.marginLeft = '10px';
+    downloadBtn.addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(debugInfo, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'auth-debug-log.json';
+      a.click();
+    });
+    document.querySelector('.button-container').appendChild(downloadBtn);
 
   } catch (error) {
     console.error('认证错误:', error);

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clerk配置检查工具</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background-color: #f5f5f7;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #0070f3;
+      margin-top: 0;
+    }
+    .config-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #eaeaea;
+      border-radius: 5px;
+    }
+    .config-item {
+      margin-bottom: 10px;
+    }
+    .label {
+      font-weight: bold;
+      display: inline-block;
+      width: 200px;
+    }
+    .value {
+      font-family: monospace;
+      padding: 5px;
+      background-color: #f7f7f7;
+      border-radius: 3px;
+      word-break: break-all;
+    }
+    .copy-btn {
+      background-color: #0070f3;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    .copy-btn:hover {
+      background-color: #0060df;
+    }
+    .check-section {
+      margin-top: 30px;
+    }
+    .success {
+      color: #4caf50;
+    }
+    .warning {
+      color: #ff9800;
+    }
+    .error {
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Clerk配置检查工具</h1>
+
+    <div class="config-section">
+      <h2>扩展信息</h2>
+      <div class="config-item">
+        <span class="label">扩展ID:</span>
+        <span id="extension-id" class="value"></span>
+        <button class="copy-btn" data-copy="extension-id">复制</button>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <h2>Clerk配置URL</h2>
+      <div class="config-item">
+        <span class="label">允许的Origin:</span>
+        <span id="allowed-origin" class="value"></span>
+        <button class="copy-btn" data-copy="allowed-origin">复制</button>
+      </div>
+      <div class="config-item">
+        <span class="label">重定向URL:</span>
+        <span id="redirect-url" class="value"></span>
+        <button class="copy-btn" data-copy="redirect-url">复制</button>
+      </div>
+      <div class="config-item">
+        <span class="label">登录后URL:</span>
+        <span id="after-signin-url" class="value"></span>
+        <button class="copy-btn" data-copy="after-signin-url">复制</button>
+      </div>
+    </div>
+
+    <div class="config-section check-section">
+      <h2>配置检查</h2>
+      <button id="check-config-btn">运行配置检查</button>
+      <div id="check-results" style="margin-top: 15px;"></div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 获取扩展ID
+      const extensionId = chrome.runtime.id;
+      document.getElementById('extension-id').textContent = extensionId;
+
+      // 设置要复制的URL
+      document.getElementById('allowed-origin').textContent = `chrome-extension://${extensionId}`;
+      document.getElementById('redirect-url').textContent = `chrome-extension://${extensionId}/auth-callback.html`;
+      document.getElementById('after-signin-url').textContent = `chrome-extension://${extensionId}/auth-callback.html`;
+
+      // 复制按钮功能
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const elementId = this.getAttribute('data-copy');
+          const text = document.getElementById(elementId).textContent;
+          navigator.clipboard.writeText(text)
+            .then(() => {
+              const originalText = this.textContent;
+              this.textContent = '已复制!';
+              setTimeout(() => {
+                this.textContent = originalText;
+              }, 1500);
+            })
+            .catch(err => {
+              console.error('复制失败:', err);
+              alert('复制失败，请手动复制');
+            });
+        });
+      });
+
+      // 配置检查功能
+      document.getElementById('check-config-btn').addEventListener('click', function() {
+        const resultsDiv = document.getElementById('check-results');
+        resultsDiv.innerHTML = '<div>正在检查配置...</div>';
+
+        // 检查CSP设置
+        checkCSP()
+          .then(cspResult => {
+            let checksHTML = `<div class="${cspResult.success ? 'success' : 'error'}">
+              <strong>CSP检查:</strong> ${cspResult.message}
+            </div>`;
+
+            // 检查文件访问权限
+            return checkFileAccess().then(fileResult => {
+              checksHTML += `<div class="${fileResult.success ? 'success' : 'error'}">
+                <strong>文件访问检查:</strong> ${fileResult.message}
+              </div>`;
+
+              // 检查域名权限
+              return checkDomainPermissions().then(domainResult => {
+                checksHTML += `<div class="${domainResult.success ? 'success' : 'error'}">
+                  <strong>域名权限检查:</strong> ${domainResult.message}
+                </div>`;
+
+                // 更新结果
+                resultsDiv.innerHTML = checksHTML;
+              });
+            });
+          })
+          .catch(error => {
+            resultsDiv.innerHTML = `<div class="error"><strong>检查出错:</strong> ${error.message}</div>`;
+          });
+      });
+
+      // 检查CSP设置
+      function checkCSP() {
+        return new Promise((resolve) => {
+          // 尝试连接到Clerk域名
+          fetch('https://api.clerk.dev/v1/client/heartbeat', {
+            method: 'GET',
+            mode: 'no-cors' // 使用no-cors模式，所以我们只能检测到请求是否发送，而不是响应内容
+          })
+          .then(() => {
+            resolve({
+              success: true,
+              message: "内容安全策略(CSP)设置正确，可以连接到Clerk域名"
+            });
+          })
+          .catch(error => {
+            resolve({
+              success: false,
+              message: `内容安全策略可能存在问题: ${error.message}`
+            });
+          });
+        });
+      }
+
+      // 检查文件访问权限
+      function checkFileAccess() {
+        return new Promise((resolve) => {
+          // 尝试访问auth-callback.html
+          fetch(chrome.runtime.getURL('auth-callback.html'))
+          .then(response => {
+            if (response.ok) {
+              resolve({
+                success: true,
+                message: "可以正确访问auth-callback.html文件"
+              });
+            } else {
+              resolve({
+                success: false,
+                message: `无法访问auth-callback.html: ${response.status} ${response.statusText}`
+              });
+            }
+          })
+          .catch(error => {
+            resolve({
+              success: false,
+              message: `访问auth-callback.html出错: ${error.message}`
+            });
+          });
+        });
+      }
+
+      // 检查域名权限
+      function checkDomainPermissions() {
+        return new Promise((resolve) => {
+          const domainsToCheck = [
+            { url: 'https://accounts.dev', name: 'Clerk主域名' },
+            { url: 'https://api.clerk.dev', name: 'Clerk API域名' }
+          ];
+
+          let results = [];
+          let completed = 0;
+
+          domainsToCheck.forEach(domain => {
+            fetch(domain.url, { mode: 'no-cors' })
+              .then(() => {
+                results.push(`${domain.name}可以连接`);
+              })
+              .catch(() => {
+                results.push(`${domain.name}连接失败`);
+              })
+              .finally(() => {
+                completed++;
+                if (completed === domainsToCheck.length) {
+                  const allSuccess = results.every(r => !r.includes('失败'));
+                  resolve({
+                    success: allSuccess,
+                    message: results.join('; ')
+                  });
+                }
+              });
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>

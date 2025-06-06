@@ -38,7 +38,7 @@
     "service_worker": "background.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.accounts.dev https://api.clerk.dev https://day-progress-bar-backend-production.up.railway.app"
   },
   "oauth2": {
     "client_id": "${966163827588-v9k3ht1k0a9acbsgt26n831lda9he8qm.apps.googleusercontent.com}",
@@ -67,7 +67,8 @@
       "auth-callback.html",
       "CLERK_SETUP_GUIDE.html",
       "get-extension-id.js",
-      "content-message-bridge.js"
+      "content-message-bridge.js",
+      "clerk-config-check.html"
     ],
     "matches": ["<all_urls>"]
   }]

@@ -184,11 +184,6 @@ chrome.runtime.onMessageExternal.addListener(
             isTestMode: true
           }, () => {
             console.log('成功将测试认证信息存储到chrome.storage');
-
-            // 尝试关闭dashboard标签页
-            if (sender.tab && sender.tab.id) {
-              chrome.tabs.remove(sender.tab.id);
-            }
           });
 
           // 发送成功响应
@@ -226,11 +221,6 @@ chrome.runtime.onMessageExternal.addListener(
           isTestMode: false
         }, () => {
           console.log('成功将认证信息存储到chrome.storage');
-
-          // 尝试关闭dashboard标签页
-          if (sender.tab && sender.tab.id) {
-            chrome.tabs.remove(sender.tab.id);
-          }
         });
 
         sendResponse({ success: true });

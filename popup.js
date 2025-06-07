@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   if (loginBtn) {
     loginBtn.addEventListener('click', async function() {
       try {
-        console.log('登录按钮点击，打开后端登录页面...');
+        console.log('登录按钮点击，打开登录页面...');
 
         // 显示加载状态
         loginBtn.textContent = '加载中...';
@@ -73,16 +73,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         // 获取扩展ID
         const extensionId = chrome.runtime.id;
 
-        // 获取API基础URL
-        const useLocalBackend = localStorage.getItem('useLocalBackend') === 'true';
-        const API_BASE_URL = useLocalBackend ?
-          'http://localhost:3000' :
-          'https://day-progress-bar-backend-production.up.railway.app';
+        // 始终使用localhost:3000作为登录URL
+        const loginUrl = `http://localhost:3000/?extension_id=${extensionId}`;
 
-        // 构建后端登录URL
-        const loginUrl = `${API_BASE_URL}/?extension_id=${extensionId}`;
-
-        console.log('打开后端登录页面:', loginUrl);
+        console.log('打开登录页面:', loginUrl);
 
         // 在新标签页中打开登录页面
         chrome.tabs.create({ url: loginUrl });

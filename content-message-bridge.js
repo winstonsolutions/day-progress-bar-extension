@@ -16,6 +16,72 @@ const ALLOWED_ORIGINS = [
   'http://localhost:8000'   // 另一个常用的开发端口
 ];
 
+// 定期检查localStorage中是否有认证数据
+function checkLocalStorageForAuthData() {
+  try {
+    const authData = localStorage.getItem('auth_data_for_extension');
+    const authToken = localStorage.getItem('auth_token_for_extension');
+
+    if (authData && authToken) {
+      console.log('[内容脚本] 从localStorage中发现认证数据');
+
+      // 解析存储的数据
+      const parsedData = JSON.parse(authData);
+
+      // 检查时间戳，只处理最近10分钟的数据
+      const now = Date.now();
+      const timestamp = parsedData.timestamp || 0;
+      const isRecent = (now - timestamp) < 10 * 60 * 1000; // 10分钟
+
+      if (isRecent) {
+        console.log('[内容脚本] 认证数据是最近的，发送到background');
+
+        // 添加token并发送到background
+        const completeAuthData = {
+          action: 'clerk-auth-success',
+          token: authToken,
+          user: parsedData.user,
+          source: 'content-script-localStorage'
+        };
+
+        chrome.runtime.sendMessage(completeAuthData)
+          .then(response => {
+            console.log('[内容脚本] background响应localStorage认证:', response);
+
+            // 如果成功，清除localStorage中的数据
+            if (response && response.success) {
+              console.log('[内容脚本] 认证成功，清除localStorage数据');
+              localStorage.removeItem('auth_data_for_extension');
+              localStorage.removeItem('auth_token_for_extension');
+
+              // 通知页面认证成功
+              window.postMessage({
+                type: 'auth_received',
+                source: 'day-progress-bar-extension',
+                success: true
+              }, '*');
+            }
+          })
+          .catch(error => {
+            console.error('[内容脚本] 发送localStorage认证数据失败:', error);
+          });
+      } else {
+        console.log('[内容脚本] 认证数据太旧，忽略');
+        // 清除旧数据
+        localStorage.removeItem('auth_data_for_extension');
+        localStorage.removeItem('auth_token_for_extension');
+      }
+    }
+  } catch (error) {
+    console.error('[内容脚本] 检查localStorage时出错:', error);
+  }
+}
+
+// 每5秒检查一次localStorage
+setInterval(checkLocalStorageForAuthData, 5000);
+// 页面加载后立即检查
+setTimeout(checkLocalStorageForAuthData, 1000);
+
 // 监听页面发出的消息
 window.addEventListener('message', function(event) {
   // 确保消息来自我们期望的源
@@ -45,10 +111,11 @@ window.addEventListener('message', function(event) {
 
       // 回复页面
       window.postMessage({
-        type: 'clerk-auth-response',
+        type: 'auth_received',
+        source: 'day-progress-bar-extension',
         success: !!response?.success,
         message: response?.success ? '认证成功' : '认证失败'
-      }, event.origin);
+      }, event.origin || '*');
     })
     .catch(error => {
       console.error('[内容脚本] 发送消息到background失败:', error);
@@ -59,6 +126,7 @@ window.addEventListener('message', function(event) {
 // 告诉页面内容脚本已准备好
 window.postMessage({
   type: 'clerk-bridge-ready',
+  source: 'day-progress-bar-extension',
   extensionId: chrome.runtime.id
 }, '*');
 

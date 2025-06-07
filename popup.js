@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // 获取扩展ID
         const extensionId = chrome.runtime.id;
 
-        // 始终使用localhost:3000作为登录URL
+        // 始终使用localhost:3000作为登录URL，确保参数名使用extension_id而不是extensionId
         const loginUrl = `http://localhost:3000/?extension_id=${extensionId}`;
 
         console.log('打开登录页面:', loginUrl);

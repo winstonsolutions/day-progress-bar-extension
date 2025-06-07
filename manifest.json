@@ -22,6 +22,14 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["style.css"]
+    },
+    {
+      "matches": [
+        "http://localhost:3000/*",
+        "https://day-progress-bar-backend-production.up.railway.app/*"
+      ],
+      "js": ["content-message-bridge.js"],
+      "run_at": "document_start"
     }
   ],
   "permissions": ["storage", "identity", "notifications", "contextMenus", "tabs", "scripting"],

@@ -120,14 +120,14 @@ async function openSignInModal() {
   // Clerk在重定向时可能使用__clerk_token或token或__clerk_db_jwt
   const authUrl = `${CLERK_BASE_URL}/sign-in?` +
                  `redirect_url=${encodeURIComponent(callbackUrl)}` +
-                 `&after_sign_in_url=${encodeURIComponent(callbackUrl)}` +
-                 `&after_sign_up_url=${encodeURIComponent(callbackUrl)}` +
+                 `&fallbackRedirectUrl=${encodeURIComponent(callbackUrl)}` +
+                 `&forceRedirectUrl=${encodeURIComponent(callbackUrl)}` +
                  `&extension_id=${extensionId}`;
 
   console.log('打开认证URL(就是clerk登陆界面):', authUrl);
   console.log('URL参数解析:');
   console.log('- redirect_url:', callbackUrl);
-  console.log('- after_sign_in_url:', callbackUrl);
+  console.log('- fallbackRedirectUrl:', callbackUrl);
   console.log('- extension_id:', extensionId);
 
   // 在控制台输出配置信息

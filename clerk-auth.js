@@ -110,11 +110,11 @@ async function openSignInModal() {
   const extensionId = chrome.runtime.id;
   console.log('扩展ID:', extensionId);
 
-  // 直接使用扩展内部的auth-callback.html页面处理认证回调
-  const callbackUrl = `chrome-extension://${extensionId}/auth-callback.html?extension_id=${extensionId}`;
+  // 修改：直接使用dashboard页面作为认证回调URL，而不是auth-callback.html
+  const callbackUrl = `http://localhost:3000/dashboard?extension_id=${extensionId}`;
 
   console.log('测试模式已关闭，将使用真实的Clerk认证流程');
-  console.log('直接使用扩展的auth-callback.html处理认证:', callbackUrl);
+  console.log('使用dashboard页面处理认证:', callbackUrl);
 
   // 构建Clerk身份验证URL (注意这里包含了多种可能的令牌参数名，增加成功率)
   // Clerk在重定向时可能使用__clerk_token或token或__clerk_db_jwt
@@ -136,7 +136,7 @@ async function openSignInModal() {
   console.log('重要提示: 在Clerk设置中，还必须:');
   console.log('1. 确保"JWT Template"已正确配置');
   console.log('2. 在Clerk仪表板中允许跨域(CORS)请求');
-  console.log('3. 在"允许的重定向URL"中添加扩展URL (chrome-extension://${extensionId}/auth-callback.html)');
+  console.log('3. 在"允许的重定向URL"中添加dashboard URL (http://localhost:3000/dashboard)');
   console.log('4. 确保"Session Token Template"正确设置，启用了token传递');
 
   // 重要：在打开认证页面前，存储一个状态标记

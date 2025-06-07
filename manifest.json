@@ -72,7 +72,6 @@
       "popup.js",
       "account.html",
       "account.js",
-      "auth-callback.html",
       "CLERK_SETUP_GUIDE.html",
       "get-extension-id.js",
       "content-message-bridge.js",

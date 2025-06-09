@@ -362,6 +362,33 @@ function checkAuthAndUpdateUI() {
       // 获取用户订阅数据
       const subscription = await getSubscriptionData();
       console.log('订阅数据:', subscription);
+
+      // 确保登录用户显示为试用或Pro状态
+      if (subscription.status !== 'active' && subscription.status !== 'pro') {
+        // 自动创建试用订阅数据
+        console.log('为登录用户创建试用订阅数据');
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + 7); // 7天试用期
+
+        const updatedSubscription = {
+          status: 'trial',
+          features: {
+            countdown: true
+          },
+          trialStarted: new Date().toISOString(),
+          trialEnds: trialEndDate.toISOString()
+        };
+
+        // 保存更新的订阅数据
+        chrome.storage.sync.set({ subscription: updatedSubscription }, function() {
+          console.log('已更新订阅状态为试用期:', updatedSubscription);
+        });
+
+        // 使用更新后的订阅数据
+        debugText += `Created trial subscription for logged in user\n`;
+        subscription.status = 'trial';
+      }
+
       debugText += `Subscription status: ${subscription.status}\n`;
 
       // 设置用户头像和名称
@@ -380,8 +407,8 @@ function checkAuthAndUpdateUI() {
       }
 
       // 根据订阅状态显示不同UI
-      if (subscription.status === 'active' || subscription.status === 'pro') {
-        // Pro用户
+      if (subscription.status === 'active' || subscription.status === 'pro' || subscription.status === 'trial') {
+        // Pro用户或试用用户
         console.log('显示Pro用户界面');
         debugText += `Displaying PRO user interface\n`;
         proUserSection.style.display = 'block';

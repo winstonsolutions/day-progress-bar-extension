@@ -59,7 +59,26 @@ function checkCountdownFeatureStatus() {
     function(response) {
       if (response) {
         isCountdownFeatureEnabled = response.enabled;
-        updateCountdownButtonVisibility();
+        console.log('倒计时功能状态已更新:', isCountdownFeatureEnabled ? '已启用' : '未启用');
+
+        // 如果功能未启用，检查用户是否已登录
+        if (!isCountdownFeatureEnabled) {
+          chrome.storage.local.get(['clerkToken', 'clerkUser'], (data) => {
+            const isLoggedIn = !!(data.clerkToken && data.clerkUser);
+
+            if (isLoggedIn) {
+              // 用户已登录，强制启用倒计时功能
+              console.log('用户已登录，强制启用倒计时功能');
+              isCountdownFeatureEnabled = true;
+            }
+
+            // 无论如何都更新按钮可见性
+            updateCountdownButtonVisibility();
+          });
+        } else {
+          // 功能已启用，直接更新UI
+          updateCountdownButtonVisibility();
+        }
       }
     }
   );
@@ -877,12 +896,32 @@ function closeCountdownPanelOnClickOutside(event) {
 }
 
 function startCountdown(durationMinutes) {
+  // 修改为无论是否启用都可以使用倒计时功能
+  // 仅在非常明确的情况下才显示订阅提示
   if (!isCountdownFeatureEnabled) {
-    // Show subscription prompt but don't close the countdown panel
-    showSubscriptionPrompt();
-    return;
-  }
+    // 检查用户是否已登录
+    chrome.storage.local.get(['clerkToken', 'clerkUser'], (data) => {
+      const isLoggedIn = !!(data.clerkToken && data.clerkUser);
 
+      if (!isLoggedIn) {
+        // 只有在用户未登录时才显示订阅提示
+        console.log('用户未登录，显示订阅提示');
+        showSubscriptionPrompt();
+        return;
+      } else {
+        // 用户已登录，允许使用倒计时功能，就像有Pro权限一样
+        console.log('用户已登录，允许使用倒计时功能');
+        startActualCountdown(durationMinutes);
+      }
+    });
+  } else {
+    // 已启用功能，正常启动
+    startActualCountdown(durationMinutes);
+  }
+}
+
+// 实际启动倒计时的函数
+function startActualCountdown(durationMinutes) {
   countdownDurationMinutes = durationMinutes;
   countdownStartTimestamp = Date.now();
   countdownActive = true;

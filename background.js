@@ -64,8 +64,30 @@ function updateProgressBarState(hidden) {
 
 // Check if a specific feature is enabled
 async function isFeatureEnabled(featureName) {
+  // 检查用户是否已经登录
+  const isLoggedIn = await checkUserLoginStatus();
+
+  // 如果是倒计时功能且用户已登录，直接启用
+  if (featureName === 'countdown' && isLoggedIn) {
+    console.log('用户已登录，自动启用倒计时功能');
+    return true;
+  }
+
+  // 如原来的逻辑一样检查订阅数据
   const subscription = await checkSubscriptionStatus();
   return subscription.features && subscription.features[featureName] === true;
+}
+
+// 检查用户是否已登录
+function checkUserLoginStatus() {
+  return new Promise(resolve => {
+    chrome.storage.local.get(['clerkToken', 'clerkUser'], (data) => {
+      // 如果有token和用户数据，认为用户已登录
+      const isLoggedIn = !!(data.clerkToken && data.clerkUser);
+      console.log('用户登录状态检查:', isLoggedIn ? '已登录' : '未登录');
+      resolve(isLoggedIn);
+    });
+  });
 }
 
 // Add context menu for subscription management

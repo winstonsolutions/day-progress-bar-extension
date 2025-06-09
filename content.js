@@ -1072,56 +1072,87 @@ setInterval(checkCountdownFeatureStatus, 60 * 60 * 1000);
 
 /**
  * 切换进度条的可见性
+ * @param {boolean} forceHidden - true表示强制隐藏，false表示强制显示，undefined表示切换当前状态
+ * @returns {boolean} - 操作后的隐藏状态
  */
 function toggleProgressBarVisibility(forceHidden) {
   const progressBarContainer = document.getElementById("day-progress-bar-container");
-  if (progressBarContainer) {
-    // 检查当前是否隐藏，或使用强制值
-    const isHidden = forceHidden !== undefined ? !forceHidden : progressBarContainer.style.display === "none";
-
-    // 保存隐藏状态到存储
-    chrome.storage.sync.set({ "dayProgressBarHidden": !isHidden });
-
-    // 更新按钮文本
-    const hideBtn = document.getElementById("day-progress-hide-btn");
-    if (hideBtn) {
-      hideBtn.textContent = isHidden ? "Hide" : "Show";
-      // 使用灰色次要按钮样式
-      hideBtn.style.backgroundColor = "#f1f3f4";
-      hideBtn.style.color = "#5f6368";
-      hideBtn.style.flex = "1";
-      hideBtn.style.height = "100%";
-      hideBtn.style.lineHeight = "36px";
-      hideBtn.style.margin = "0";
-      hideBtn.style.padding = "0";
-    }
-
-    // 切换可见性
-    progressBarContainer.style.display = isHidden ? "flex" : "none";
-
-    // 关闭设置面板
-    const settingsPanel = document.getElementById("day-progress-settings-panel");
-    if (settingsPanel) {
-      settingsPanel.style.display = "none";
-      document.removeEventListener('click', closeSettingsPanelOnClickOutside);
-    }
+  if (!progressBarContainer) {
+    console.log('进度条容器不存在，可能需要先创建');
+    createProgressBar(); // 如果进度条不存在，先创建它
+    return false; // 新创建的进度条默认是显示的
   }
+
+  // 检查当前是否隐藏，或使用强制值
+  const isCurrentlyHidden = progressBarContainer.style.display === "none";
+  const shouldBeHidden = forceHidden !== undefined ? forceHidden : !isCurrentlyHidden;
+
+  console.log('切换进度条可见性:', {
+    当前是否隐藏: isCurrentlyHidden,
+    目标状态: shouldBeHidden ? '隐藏' : '显示',
+    强制参数: forceHidden
+  });
+
+  // 保存隐藏状态到存储
+  chrome.storage.sync.set({ "dayProgressBarHidden": shouldBeHidden });
+
+  // 更新按钮文本
+  const hideBtn = document.getElementById("day-progress-hide-btn");
+  if (hideBtn) {
+    hideBtn.textContent = shouldBeHidden ? "Show" : "Hide";
+    // 使用灰色次要按钮样式
+    hideBtn.style.backgroundColor = "#f1f3f4";
+    hideBtn.style.color = "#5f6368";
+    hideBtn.style.flex = "1";
+    hideBtn.style.height = "100%";
+    hideBtn.style.lineHeight = "36px";
+    hideBtn.style.margin = "0";
+    hideBtn.style.padding = "0";
+  }
+
+  // 切换可见性 - 立即应用
+  progressBarContainer.style.display = shouldBeHidden ? "none" : "flex";
+
+  // 关闭设置面板
+  const settingsPanel = document.getElementById("day-progress-settings-panel");
+  if (settingsPanel) {
+    settingsPanel.style.display = "none";
+    document.removeEventListener('click', closeSettingsPanelOnClickOutside);
+  }
+
+  return shouldBeHidden;
 }
 
 // 在文件顶部添加消息监听器
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+  console.log('内容脚本收到消息:', message);
+
   // 处理ping消息，用于检查内容脚本是否加载
   if (message.action === 'ping') {
+    console.log('收到ping请求，回复pong');
     sendResponse({pong: true});
-    return;
+    return true;
   }
 
-  if (message.action === 'toggleProgressBarVisibility') {
+  if (message.action === 'toggleProgressBar') {
+    console.log('收到切换进度条消息:', message);
+
+    // 确保进度条已创建
+    if (!document.getElementById("day-progress-bar-container")) {
+      console.log('进度条不存在，创建新的进度条');
+      createProgressBar();
+    }
+
     // 直接使用消息中传递的隐藏状态
-    toggleProgressBarVisibility(message.hidden);
+    const newHiddenState = toggleProgressBarVisibility(message.hidden);
+
     // 立即响应，不再需要异步
-    sendResponse({success: true});
-  } else if (message.action === 'openSettingsPanel') {
+    console.log('进度条状态已更新:', newHiddenState ? '隐藏' : '显示');
+    sendResponse({success: true, hidden: newHiddenState});
+    return true;
+  }
+
+  if (message.action === 'openSettingsPanel') {
     const panel = document.getElementById("day-progress-settings-panel");
     if (panel) {
       panel.style.display = "block";
@@ -1132,6 +1163,8 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     }
     // 立即响应，不再需要异步
     sendResponse({success: true});
+    return true;
   }
-  // 不返回true，表示我们已经同步处理完毕
+
+  return true; // 表示我们会异步处理消息
 });

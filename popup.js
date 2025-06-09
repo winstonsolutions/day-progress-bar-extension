@@ -171,51 +171,72 @@ async function getSubscriptionData() {
  * 更新活动标签页
  */
 function updateActiveTab(hidden) {
-  chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-    if (tabs.length > 0) {
-      const activeTab = tabs[0];
+  // 1. 向所有标签页发送消息，而不仅仅是活动标签页
+  chrome.tabs.query({}, function(tabs) {
+    console.log(`向${tabs.length}个标签页发送消息，设置进度条隐藏状态为:`, hidden);
 
+    // 跟踪成功更新的标签页数量
+    let updatedTabs = 0;
+
+    // 遍历所有标签页
+    tabs.forEach(tab => {
       // 检查是否为允许的URL
-      const url = activeTab.url || '';
+      const url = tab.url || '';
       const isAllowedUrl = url.startsWith('http') || url.startsWith('https');
 
       if (isAllowedUrl) {
         try {
+          console.log(`尝试向标签页发送消息:`, {tabId: tab.id, url: tab.url});
           chrome.tabs.sendMessage(
-            activeTab.id,
+            tab.id,
             { action: 'toggleProgressBar', hidden: hidden },
             function(response) {
               // 检查消息是否成功传递
               if (chrome.runtime.lastError) {
-                console.log('无法发送消息到内容脚本:', chrome.runtime.lastError.message);
+                console.log(`标签页 ${tab.id} 无法接收消息:`, chrome.runtime.lastError.message);
 
                 // 尝试注入内容脚本
                 chrome.scripting.executeScript({
-                  target: { tabId: activeTab.id },
+                  target: { tabId: tab.id },
                   files: ['content.js']
                 }, function() {
                   if (chrome.runtime.lastError) {
-                    console.error('无法注入内容脚本:', chrome.runtime.lastError.message);
+                    console.error(`无法向标签页 ${tab.id} 注入内容脚本:`, chrome.runtime.lastError.message);
                   } else {
                     // 脚本注入成功后重试发送消息
                     setTimeout(() => {
                       chrome.tabs.sendMessage(
-                        activeTab.id,
-                        { action: 'toggleProgressBar', hidden: hidden }
+                        tab.id,
+                        { action: 'toggleProgressBar', hidden: hidden },
+                        function(innerResponse) {
+                          if (innerResponse && innerResponse.success) {
+                            updatedTabs++;
+                            console.log(`标签页 ${tab.id} 成功更新`);
+                          }
+                        }
                       );
                     }, 100);
                   }
                 });
-              } else if (response) {
-                console.log('内容脚本响应:', response);
+              } else if (response && response.success) {
+                updatedTabs++;
+                console.log(`标签页 ${tab.id} 成功更新`);
               }
             }
           );
         } catch (e) {
-          console.error('发送消息时出错:', e);
+          console.error(`向标签页 ${tab.id} 发送消息时出错:`, e);
         }
       }
-    }
+    });
+
+    // 2. 更新背景页中的状态，确保新打开的标签页也会应用正确的状态
+    chrome.runtime.sendMessage(
+      { action: 'updateProgressBarState', hidden: hidden },
+      function(response) {
+        console.log('背景页响应:', response);
+      }
+    );
   });
 }
 
@@ -228,6 +249,9 @@ function updateButtonState(button, isHidden) {
   } else {
     button.textContent = "HIDE";
   }
+
+  // 添加日志，便于调试
+  console.log('更新按钮状态:', isHidden ? 'SHOW' : 'HIDE');
 }
 
 /**

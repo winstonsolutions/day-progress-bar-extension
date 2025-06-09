@@ -8,6 +8,11 @@ const STATUS = {
   FREE: 'free'
 };
 
+// 存储进度条当前状态
+let currentProgressBarState = {
+  hidden: false
+};
+
 // Check subscription status
 function checkSubscriptionStatus() {
   return new Promise(resolve => {
@@ -38,6 +43,25 @@ function checkSubscriptionStatus() {
   });
 }
 
+// 在背景页初始化时从存储中加载进度条状态
+function loadProgressBarState() {
+  chrome.storage.sync.get(['dayProgressBarHidden'], function(result) {
+    if (result.hasOwnProperty('dayProgressBarHidden')) {
+      currentProgressBarState.hidden = result.dayProgressBarHidden;
+      console.log('从存储加载进度条状态:', currentProgressBarState);
+    }
+  });
+}
+
+// 更新进度条状态
+function updateProgressBarState(hidden) {
+  currentProgressBarState.hidden = hidden;
+  console.log('更新进度条状态:', currentProgressBarState);
+
+  // 同步保存到存储
+  chrome.storage.sync.set({ dayProgressBarHidden: hidden });
+}
+
 // Check if a specific feature is enabled
 async function isFeatureEnabled(featureName) {
   const subscription = await checkSubscriptionStatus();
@@ -62,6 +86,49 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
+// 监听标签页创建事件，在新标签页完成加载后应用当前进度条状态
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // 仅当标签页完成加载且URL是http或https时处理
+  if (changeInfo.status === 'complete' && tab.url &&
+      (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+
+    console.log(`新标签页加载完成: ${tabId}, 应用进度条状态:`, currentProgressBarState);
+
+    // 延迟一段时间，确保内容脚本已加载
+    setTimeout(() => {
+      // 首先检查内容脚本是否已加载
+      chrome.tabs.sendMessage(tabId, { action: 'ping' }, function(response) {
+        if (chrome.runtime.lastError) {
+          console.log(`标签页 ${tabId} 内容脚本未加载，正在注入...`);
+          // 如果内容脚本未加载，注入内容脚本
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['content.js']
+          }, function() {
+            if (chrome.runtime.lastError) {
+              console.error(`无法向标签页 ${tabId} 注入内容脚本:`, chrome.runtime.lastError.message);
+            } else {
+              // 脚本注入成功后，应用进度条状态
+              setTimeout(() => {
+                chrome.tabs.sendMessage(tabId, {
+                  action: 'toggleProgressBar',
+                  hidden: currentProgressBarState.hidden
+                });
+              }, 200);
+            }
+          });
+        } else {
+          // 内容脚本已加载，直接应用进度条状态
+          chrome.tabs.sendMessage(tabId, {
+            action: 'toggleProgressBar',
+            hidden: currentProgressBarState.hidden
+          });
+        }
+      });
+    }, 500); // 延迟500ms确保页面完全加载
+  }
+});
+
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'checkFeature') {
@@ -77,6 +144,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     sendResponse({ success: true });
     return true;
+  }
+
+  // 处理更新进度条状态的消息
+  if (message.action === 'updateProgressBarState') {
+    console.log('收到更新进度条状态的请求:', message);
+    updateProgressBarState(message.hidden);
+    sendResponse({ success: true });
+    return false; // 非异步响应
   }
 
   // 处理从dashboard.html页面接收的Clerk认证结果
@@ -235,6 +310,9 @@ chrome.runtime.onMessageExternal.addListener(
 // Initialize
 chrome.runtime.onInstalled.addListener(() => {
   console.log("扩展已安装，添加监听器监听来自网页的消息");
+
+  // 加载进度条状态
+  loadProgressBarState();
 
   // 添加内容脚本，用于接收网页中的postMessage消息
   chrome.scripting.registerContentScripts([{

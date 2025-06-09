@@ -102,7 +102,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // 存储测试认证信息
         chrome.storage.local.set({
           clerkToken: message.token,
-          clerkUser: testUser,
+          clerkUser: JSON.stringify(testUser),
           authComplete: true,
           isTestMode: true
         }, () => {
@@ -137,7 +137,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // 存储认证信息到chrome.storage
       chrome.storage.local.set({
         clerkToken: message.token,
-        clerkUser: userObj,
+        clerkUser: JSON.stringify(userObj),
         authComplete: true,
         isTestMode: false
       }, () => {
@@ -179,7 +179,7 @@ chrome.runtime.onMessageExternal.addListener(
           // 存储测试认证信息
           chrome.storage.local.set({
             clerkToken: token,
-            clerkUser: testUser,
+            clerkUser: JSON.stringify(testUser),
             authComplete: true,
             isTestMode: true
           }, () => {
@@ -216,7 +216,7 @@ chrome.runtime.onMessageExternal.addListener(
         // 存储认证信息
         chrome.storage.local.set({
           clerkToken: token,
-          clerkUser: userObj,
+          clerkUser: JSON.stringify(userObj),
           authComplete: true,
           isTestMode: false
         }, () => {

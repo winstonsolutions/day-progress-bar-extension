@@ -8,10 +8,25 @@ document.addEventListener('DOMContentLoaded', async function() {
   const signinBtn = document.getElementById('signin-btn');
   const logoutBtn = document.getElementById('logout-btn');
   const proLogoutBtn = document.getElementById('pro-logout-btn');
+  const debugSection = document.getElementById('debug-section');
+  const debugStatus = document.getElementById('debug-status');
 
   const notLoggedInSection = document.getElementById('not-logged-in');
   const freeUserSection = document.getElementById('free-user');
   const proUserSection = document.getElementById('pro-user');
+
+  // 启用调试模式（开发时使用，生产环境可删除）
+  const debug = true;
+
+  if (debug) {
+    debugSection.style.display = 'block';
+    debugStatus.textContent = 'Initializing...';
+
+    // 添加双击标题以显示调试信息
+    document.querySelector('h1').addEventListener('dblclick', function() {
+      showDebugInfo();
+    });
+  }
 
   // 检查认证状态
   checkAuthAndUpdateUI();
@@ -190,6 +205,55 @@ function updateButtonState(button, isHidden) {
 }
 
 /**
+ * 显示调试信息
+ */
+function showDebugInfo() {
+  const debugSection = document.getElementById('debug-section');
+  const debugStatus = document.getElementById('debug-status');
+
+  debugSection.style.display = 'block';
+  debugStatus.textContent = 'Loading debug info...';
+
+  chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete'], function(data) {
+    let debugText = 'AUTH STATUS:\n';
+
+    if (data.clerkToken) {
+      const tokenPreview = data.clerkToken.substring(0, 10) + '...';
+      debugText += `- Token: ${tokenPreview}\n`;
+    } else {
+      debugText += '- No token found\n';
+    }
+
+    if (data.clerkUser) {
+      debugText += `- User data found: ${typeof data.clerkUser}\n`;
+      if (typeof data.clerkUser === 'string') {
+        try {
+          const user = JSON.parse(data.clerkUser);
+          debugText += `- User parsed: ${user.firstName || 'No name'} (${user.email || 'No email'})\n`;
+        } catch (e) {
+          debugText += `- Failed to parse user data: ${e.message}\n`;
+        }
+      } else {
+        debugText += `- User object: ${JSON.stringify(data.clerkUser)}\n`;
+      }
+    } else {
+      debugText += '- No user data found\n';
+    }
+
+    debugText += `- Auth complete: ${data.authComplete ? 'Yes' : 'No'}\n`;
+
+    // Add section visibility info
+    debugText += '\nSECTION VISIBILITY:\n';
+    debugText += `- Not logged in: ${document.getElementById('not-logged-in').style.display}\n`;
+    debugText += `- Free user: ${document.getElementById('free-user').style.display}\n`;
+    debugText += `- Pro user: ${document.getElementById('pro-user').style.display}\n`;
+
+    // Display debug info
+    debugStatus.textContent = debugText;
+  });
+}
+
+/**
  * 检查认证状态并更新UI
  */
 function checkAuthAndUpdateUI() {
@@ -199,9 +263,18 @@ function checkAuthAndUpdateUI() {
     const notLoggedInSection = document.getElementById('not-logged-in');
     const freeUserSection = document.getElementById('free-user');
     const proUserSection = document.getElementById('pro-user');
+    const debugStatus = document.getElementById('debug-status');
 
     const userAvatarElement = document.getElementById('user-avatar');
     const userNameElement = document.getElementById('user-name');
+
+    // Update debug information
+    let debugText = '';
+    if (data.clerkToken) {
+      debugText += `Token found (${data.clerkToken.substring(0, 10)}...)\n`;
+    } else {
+      debugText += 'No token found\n';
+    }
 
     // 隐藏所有部分
     notLoggedInSection.style.display = 'none';
@@ -210,36 +283,74 @@ function checkAuthAndUpdateUI() {
 
     // 检查用户是否已登录
     const isSignedIn = !!(data.clerkToken && data.clerkUser);
+    console.log('用户登录状态:', isSignedIn);
+    debugText += `Login state: ${isSignedIn ? 'Signed in' : 'Not signed in'}\n`;
 
     if (isSignedIn) {
-      const user = JSON.parse(data.clerkUser);
+      console.log('用户已登录，准备显示用户信息');
+      debugText += 'User is logged in, preparing to show user info\n';
+
+      let user;
+
+      // 检查clerkUser是字符串还是对象
+      if (typeof data.clerkUser === 'string') {
+        try {
+          user = JSON.parse(data.clerkUser);
+          debugText += `Successfully parsed user data\n`;
+        } catch (e) {
+          console.error('解析用户数据失败:', e);
+          debugText += `Failed to parse user data: ${e.message}\n`;
+          user = { id: 'error', firstName: 'Error', lastName: '', email: '' };
+        }
+      } else {
+        user = data.clerkUser;
+        debugText += `Using user data as object\n`;
+      }
+
       console.log('已登录的用户:', user);
 
       // 获取用户订阅数据
       const subscription = await getSubscriptionData();
       console.log('订阅数据:', subscription);
+      debugText += `Subscription status: ${subscription.status}\n`;
 
       // 设置用户头像和名称
       if (userAvatarElement) {
-        const firstLetter = (user.firstName || user.email || 'U').charAt(0).toUpperCase();
+        const firstLetter = (user.firstName || (user.email ? user.email.charAt(0) : 'U')).toUpperCase();
         userAvatarElement.textContent = firstLetter;
+        console.log('设置用户头像:', firstLetter);
+        debugText += `Avatar set to: ${firstLetter}\n`;
       }
 
       if (userNameElement) {
-        userNameElement.textContent = user.firstName || user.email.split('@')[0];
+        const displayName = user.firstName || (user.email ? user.email.split('@')[0] : 'User');
+        userNameElement.textContent = displayName;
+        console.log('设置用户名称:', displayName);
+        debugText += `Username set to: ${displayName}\n`;
       }
 
       // 根据订阅状态显示不同UI
       if (subscription.status === 'active' || subscription.status === 'pro') {
         // Pro用户
+        console.log('显示Pro用户界面');
+        debugText += `Displaying PRO user interface\n`;
         proUserSection.style.display = 'block';
       } else {
         // 免费用户
+        console.log('显示免费用户界面');
+        debugText += `Displaying FREE user interface\n`;
         freeUserSection.style.display = 'block';
       }
     } else {
       // 未登录状态
+      console.log('用户未登录，显示登录界面');
+      debugText += `Displaying login interface\n`;
       notLoggedInSection.style.display = 'block';
+    }
+
+    // Update debug display
+    if (debugStatus) {
+      debugStatus.textContent = debugText;
     }
   });
 }

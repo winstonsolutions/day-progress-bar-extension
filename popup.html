@@ -18,6 +18,7 @@
       display: flex;
       flex-direction: column;
       gap: 20px;
+      min-height: 250px;
     }
     h1 {
       font-size: 20px;
@@ -133,6 +134,25 @@
     #not-logged-in, #free-user, #pro-user {
       display: none;
     }
+    /* Debug styles */
+    .debug-section {
+      margin-top: 20px;
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      font-size: 12px;
+    }
+    .debug-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .debug-status {
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+      background: #f5f5f5;
+      padding: 5px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
@@ -142,14 +162,14 @@
     <button id="toggle-btn" class="show-hide-btn">SHOW/HIDE</button>
 
     <!-- 未登录状态 -->
-    <div id="not-logged-in">
+    <div id="not-logged-in" style="display: none;">
       <p class="user-promo">Sign up now to unlock 7 day free pro feature</p>
       <button id="signup-btn" class="signup-btn">Sign up</button>
       <p class="signin-text">Already have an account? <span id="signin-btn" class="signin-link">Sign in</span></p>
     </div>
 
     <!-- 免费用户状态 -->
-    <div id="free-user">
+    <div id="free-user" style="display: none;">
       <div class="user-info">
         <div class="user-avatar" id="user-avatar">U</div>
         <div>
@@ -164,13 +184,19 @@
     </div>
 
     <!-- Pro用户状态 -->
-    <div id="pro-user">
+    <div id="pro-user" style="display: none;">
       <div class="pro-status">
         pro 用户<br>
         永久有效
       </div>
 
       <button id="pro-logout-btn" class="logout-btn">LOGOUT</button>
+    </div>
+
+    <!-- Debug section - only shown when needed -->
+    <div id="debug-section" class="debug-section" style="display: none;">
+      <div class="debug-title">Debug Info:</div>
+      <div id="debug-status" class="debug-status">No info available</div>
     </div>
   </div>
 

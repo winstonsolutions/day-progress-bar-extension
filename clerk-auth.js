@@ -307,16 +307,78 @@ function isAuthenticated() {
  */
 async function signOut() {
   try {
-    // Clear local data
+    console.log('开始执行Clerk登出流程...');
+
+    // 如果没有token或用户，直接返回成功
+    if (!clerkToken || !currentUser) {
+      console.log('无token或用户数据，无需后端登出');
+      return true;
+    }
+
+    // 方法1: 调用Clerk的signOut API端点
+    try {
+      console.log('尝试调用Clerk API登出...');
+
+      // 使用重定向URL打开Clerk的登出页面
+      const extensionId = chrome.runtime.id;
+      const redirectUrl = `chrome-extension://${extensionId}/popup.html`;
+
+      // 首先尝试直接调用API
+      const response = await fetch(`${CLERK_BASE_URL}/v1/client/sign-outs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${clerkToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          redirect_url: redirectUrl
+        })
+      });
+
+      console.log('Clerk登出API响应:', response.status);
+
+      // 方法2: 如果API调用失败，尝试在新标签页中打开Clerk的登出URL
+      if (!response.ok) {
+        console.log('API登出失败，尝试打开登出URL');
+        const signOutUrl = `${CLERK_BASE_URL}/sign-out?redirect_url=${encodeURIComponent(redirectUrl)}`;
+
+        // 打开登出页面后立即关闭，用户不会看到这个过程
+        chrome.tabs.create({ url: signOutUrl, active: false }, (tab) => {
+          // 等待1秒后关闭标签页，确保请求有足够时间完成
+          setTimeout(() => {
+            chrome.tabs.remove(tab.id);
+          }, 1000);
+        });
+      }
+    } catch (apiError) {
+      console.error('调用Clerk API登出失败:', apiError);
+    }
+
+    // 方法3: 调用我们自己的后端API
+    try {
+      const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+      await fetch(`${API_URL}/api/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${clerkToken}`
+        }
+      });
+    } catch (backendError) {
+      console.log('调用后端登出API失败，忽略此错误', backendError);
+    }
+
+    // 清除本地数据
     currentUser = null;
     clerkToken = null;
 
-    // Clear from storage
-    await chrome.storage.local.remove(['clerkToken', 'clerkUser']);
+    // 清除本地存储
+    await chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete']);
+    console.log('已清除本地存储中的认证数据');
 
     return true;
   } catch (error) {
-    console.error('Sign-out failed:', error);
+    console.error('登出过程出错:', error);
     return false;
   }
 }

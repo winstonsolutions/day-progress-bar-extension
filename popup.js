@@ -1,5 +1,6 @@
 // Import the API module and auth module
 import { testBackendConnection } from './api.js';
+import { signOut } from './clerk-auth.js';
 
 // 当弹出界面加载时，初始化按钮状态
 document.addEventListener('DOMContentLoaded', async function() {
@@ -123,11 +124,36 @@ function openAuthPage(page = 'sign-in') {
 /**
  * 退出登录
  */
-function logout() {
-  chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
-    console.log('已清除认证数据');
-    checkAuthAndUpdateUI();
-  });
+async function logout() {
+  try {
+    console.log('执行登出流程...');
+
+    // 调用Clerk的signOut方法确保后端也登出
+    const signOutResult = await signOut();
+    console.log('Clerk signOut 结果:', signOutResult);
+
+    // 清除本地存储中的认证数据
+    chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
+      console.log('已清除本地认证数据');
+
+      // 刷新UI显示未登录状态
+      checkAuthAndUpdateUI();
+
+      // 可选：向后端发送登出事件
+      try {
+        const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+        fetch(`${API_URL}/api/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        }).catch(e => console.log('通知后端登出可选步骤失败，忽略此错误:', e));
+      } catch (e) {
+        console.log('通知后端登出失败，但这是可选步骤:', e);
+      }
+    });
+  } catch (error) {
+    console.error('登出过程中出错:', error);
+    alert('登出失败，请重试');
+  }
 }
 
 /**

@@ -103,28 +103,28 @@ async function verifyToken(token) {
 
 /**
  * Open authentication page in a new tab
+ * @param {string} type - The type of auth page to open: 'sign-in' or 'sign-up'
  * @returns {Promise<Object|null>} User data if sign-in successful, null otherwise
  */
-async function openSignInModal() {
+async function openSignInModal(type = 'sign-in') {
   // 获取扩展ID，用于构建回调参数
   const extensionId = chrome.runtime.id;
   console.log('扩展ID:', extensionId);
 
-  // 修改：直接使用dashboard页面作为认证回调URL，而不是auth-callback.html
+  // 修改：直接使用dashboard页面作为认证回调URL
   const callbackUrl = `http://localhost:3000/dashboard?extension_id=${extensionId}`;
 
   console.log('测试模式已关闭，将使用真实的Clerk认证流程');
   console.log('使用dashboard页面处理认证:', callbackUrl);
 
   // 构建Clerk身份验证URL (注意这里包含了多种可能的令牌参数名，增加成功率)
-  // Clerk在重定向时可能使用__clerk_token或token或__clerk_db_jwt
-  const authUrl = `${CLERK_BASE_URL}/sign-in?` +
+  const authUrl = `${CLERK_BASE_URL}/${type}?` +
                  `redirect_url=${encodeURIComponent(callbackUrl)}` +
                  `&fallbackRedirectUrl=${encodeURIComponent(callbackUrl)}` +
                  `&forceRedirectUrl=${encodeURIComponent(callbackUrl)}` +
                  `&extension_id=${extensionId}`;
 
-  console.log('打开认证URL(就是clerk登陆界面):', authUrl);
+  console.log(`打开${type}认证URL:`, authUrl);
   console.log('URL参数解析:');
   console.log('- redirect_url:', callbackUrl);
   console.log('- fallbackRedirectUrl:', callbackUrl);
@@ -143,7 +143,8 @@ async function openSignInModal() {
   await chrome.storage.local.set({
     authInProgress: true,
     authStartTime: Date.now(),
-    authTestMode: false // 确保测试模式已关闭
+    authTestMode: false, // 确保测试模式已关闭
+    authType: type // 存储认证类型，用于界面显示
   });
 
   // Open auth in a new tab/window

@@ -8,152 +8,130 @@
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       margin: 0;
-      padding: 0;
+      padding: 20px;
       width: 300px;
       color: #333;
+      background-color: #fff;
+      border-radius: 10px;
     }
     .container {
-      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
     h1 {
-      font-size: 16px;
-      margin: 0 0 16px;
+      font-size: 20px;
+      margin: 0;
+      text-align: center;
       font-weight: 600;
     }
-    button {
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      margin-bottom: 10px;
-      width: 100%;
-      text-align: left;
-    }
-    button.active {
-      background-color: #007bff;
+    .show-hide-btn {
+      background-color: #6366f1;
       color: white;
+      padding: 15px 20px;
+      border: none;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 0.2s;
     }
-    button.inactive {
-      background-color: #e9ecef;
-      color: #495057;
+    .show-hide-btn:hover {
+      background-color: #4f46e5;
     }
-    button.active:hover {
-      background-color: #0069d9;
+    .user-promo {
+      text-align: center;
+      font-size: 16px;
+      line-height: 1.4;
+      margin: 0;
     }
-    button.inactive:hover {
-      background-color: #dae0e5;
+    .signup-btn {
+      background-color: #22c55e;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
     }
-    .separator {
-      border-top: 1px solid #e9ecef;
-      margin: 16px 0;
+    .signup-btn:hover {
+      background-color: #16a34a;
     }
-    .footer {
-      margin-top: 16px;
-      font-size: 12px;
-      color: #6c757d;
+    .signin-text {
+      text-align: center;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    .signin-link {
+      color: #22c55e;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .signin-link:hover {
+      text-decoration: underline;
     }
     .user-info {
       display: flex;
       align-items: center;
-      margin-bottom: 16px;
+      gap: 15px;
+      margin: 15px 0;
     }
-    .avatar {
-      width: 32px;
-      height: 32px;
-      background-color: #007bff;
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      background-color: #6366f1;
       color: white;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 20px;
       font-weight: bold;
-      margin-right: 10px;
-    }
-    .user-details {
-      flex-grow: 1;
     }
     .user-name {
-      font-weight: 600;
+      font-weight: 500;
+      font-size: 18px;
+    }
+    .user-status {
       font-size: 14px;
-    }
-    .subscription-status {
-      font-size: 12px;
-      color: #6c757d;
-    }
-    .badge {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 10px;
-      font-size: 10px;
-      margin-left: 5px;
-    }
-    .badge-pro {
-      background-color: #28a745;
-      color: white;
+      color: #6b7280;
     }
     .badge-free {
-      background-color: #f8f9fa;
-      color: #6c757d;
-      border: 1px solid #dee2e6;
+      display: inline-block;
+      padding: 2px 8px;
+      background-color: #f3f4f6;
+      border-radius: 10px;
+      font-size: 12px;
+      margin-left: 5px;
     }
-    .login-button {
-      background-color: #007bff;
-      color: white;
+    .pro-status {
+      background-color: #e5e7eb;
+      color: #111827;
+      padding: 15px;
+      border-radius: 10px;
       text-align: center;
+      font-size: 16px;
     }
-    .login-button:hover {
-      background-color: #0069d9;
-    }
-    .logout-button {
-      background-color: transparent;
-      color: #6c757d;
-      border: 1px solid #dee2e6;
+    .logout-btn {
+      background-color: #e5e7eb;
+      color: #111827;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
       margin-top: 10px;
     }
-    .logout-button:hover {
-      background-color: #f8f9fa;
+    .logout-btn:hover {
+      background-color: #d1d5db;
     }
-    .debug-section {
-      margin-top: 20px;
-      border-top: 1px solid #e9ecef;
-      padding-top: 15px;
-    }
-    .debug-section h3 {
-      font-size: 14px;
-      margin: 0 0 10px;
-    }
-    .debug-controls {
-      display: flex;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    .debug-controls label {
-      font-size: 12px;
-      margin-right: 10px;
-    }
-    #debug-info {
+    #not-logged-in, #free-user, #pro-user {
       display: none;
-      font-family: monospace;
-      font-size: 11px;
-      background-color: #f8f9fa;
-      padding: 10px;
-      border-radius: 4px;
-      max-height: 100px;
-      overflow-y: auto;
-      margin-top: 10px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-    #test-backend-button {
-      font-size: 12px;
-      padding: 4px 8px;
-      background-color: #6c757d;
-      color: white;
-      width: auto;
-    }
-    #not-logged-in, #logged-in {
-      margin-bottom: 16px;
     }
   </style>
 </head>
@@ -161,49 +139,38 @@
   <div class="container">
     <h1>Work Hours Progress Bar</h1>
 
-    <!-- 进度条控制按钮 -->
-    <button id="toggle-btn" class="active">隐藏进度条</button>
-
-    <div class="separator"></div>
+    <button id="toggle-btn" class="show-hide-btn">SHOW/HIDE</button>
 
     <!-- 未登录状态 -->
     <div id="not-logged-in">
-      <p style="font-size: 14px; margin-bottom: 16px;">登录以访问更多功能和设置</p>
-      <button id="login-btn" class="login-button">登录 / 创建账号</button>
+      <p class="user-promo">Sign up now to unlock 7 day free pro feature</p>
+      <button id="signup-btn" class="signup-btn">Sign up</button>
+      <p class="signin-text">Already have an account? <span id="signin-btn" class="signin-link">Sign in</span></p>
     </div>
 
-    <!-- 已登录状态 -->
-    <div id="logged-in" style="display: none;">
+    <!-- 免费用户状态 -->
+    <div id="free-user">
       <div class="user-info">
-        <div class="avatar" id="user-avatar">U</div>
-        <div class="user-details">
-          <div class="user-name" id="user-name">用户</div>
-          <div class="subscription-status">
-            <span id="subscription-status">免费版</span>
-            <span id="pro-badge" class="badge badge-pro" style="display: none;">PRO</span>
-            <span id="free-badge" class="badge badge-free">FREE</span>
+        <div class="user-avatar" id="user-avatar">U</div>
+        <div>
+          <div class="user-name" id="user-name">winston</div>
+          <div class="user-status">
+            免费版 <span class="badge-free">FREE</span>
           </div>
         </div>
       </div>
 
-      <button id="account-btn">账户管理</button>
-      <button id="logout-btn" class="logout-button">退出登录</button>
+      <button id="logout-btn" class="logout-btn">LOGOUT</button>
     </div>
 
-    <!-- 调试区域 -->
-    <div class="debug-section">
-      <h3>开发选项</h3>
-      <div class="debug-controls">
-        <label>
-          <input type="checkbox" id="use-local-backend"> 使用本地后端
-        </label>
-        <button id="test-backend-button">测试后端连接</button>
+    <!-- Pro用户状态 -->
+    <div id="pro-user">
+      <div class="pro-status">
+        pro 用户<br>
+        永久有效
       </div>
-      <div id="debug-info"></div>
-    </div>
 
-    <div class="footer">
-      Version 1.0.0 &copy; 2023 Progress Tools
+      <button id="pro-logout-btn" class="logout-btn">LOGOUT</button>
     </div>
   </div>
 

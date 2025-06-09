@@ -1,35 +1,17 @@
-// Import the API module
+// Import the API module and auth module
 import { testBackendConnection } from './api.js';
 
 // 当弹出界面加载时，初始化按钮状态
 document.addEventListener('DOMContentLoaded', async function() {
   const toggleBtn = document.getElementById('toggle-btn');
-  const loginBtn = document.getElementById('login-btn');
-  const accountBtn = document.getElementById('account-btn');
+  const signupBtn = document.getElementById('signup-btn');
+  const signinBtn = document.getElementById('signin-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  const proLogoutBtn = document.getElementById('pro-logout-btn');
+
   const notLoggedInSection = document.getElementById('not-logged-in');
-  const loggedInSection = document.getElementById('logged-in');
-  const useLocalBackendCheckbox = document.getElementById('use-local-backend');
-
-  // 检查localStorage中的后端设置
-  try {
-    const useLocalBackend = localStorage.getItem('useLocalBackend') === 'true';
-    useLocalBackendCheckbox.checked = useLocalBackend;
-    console.log('使用本地后端设置:', useLocalBackend);
-  } catch (e) {
-    console.error('无法访问localStorage:', e);
-  }
-
-  // 添加本地后端切换功能
-  useLocalBackendCheckbox.addEventListener('change', function(e) {
-    const useLocal = e.target.checked;
-    localStorage.setItem('useLocalBackend', useLocal);
-    console.log('已更新后端设置，使用本地后端:', useLocal);
-
-    // 显示重新加载提示
-    const debugInfoElement = document.getElementById('debug-info');
-    debugInfoElement.style.display = 'block';
-    debugInfoElement.textContent = `已${useLocal ? '启用' : '禁用'}本地后端。请刷新扩展以应用更改。API地址现在是: ${useLocal ? 'http://localhost' : 'https://day-progress-bar-backend-production.up.railway.app'}`;
-  });
+  const freeUserSection = document.getElementById('free-user');
+  const proUserSection = document.getElementById('pro-user');
 
   // 检查认证状态
   checkAuthAndUpdateUI();
@@ -40,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     updateButtonState(toggleBtn, isHidden);
   });
 
-  // 为按钮添加点击事件
+  // 为进度条按钮添加点击事件
   toggleBtn.addEventListener('click', function() {
     chrome.storage.sync.get(['dayProgressBarHidden'], function(result) {
       const currentlyHidden = result.dayProgressBarHidden || false;
@@ -51,95 +33,87 @@ document.addEventListener('DOMContentLoaded', async function() {
         // 更新按钮状态
         updateButtonState(toggleBtn, newState);
 
-        // 存储状态后立即更新按钮，无论内容脚本是否响应
-        // 这确保了即使没有可用的标签页，UI也能正确显示
-
         // 尝试向当前活动标签页发送消息（如果可用）
         updateActiveTab(newState);
       });
     });
   });
 
+  // 注册按钮点击事件
+  if (signupBtn) {
+    signupBtn.addEventListener('click', function() {
+      openAuthPage('sign-up');
+    });
+  }
+
   // 登录按钮点击事件
-  if (loginBtn) {
-    loginBtn.addEventListener('click', async function() {
-      try {
-        console.log('登录按钮点击，打开登录页面...');
-
-        // 显示加载状态
-        loginBtn.textContent = '加载中...';
-        loginBtn.disabled = true;
-
-        // 获取扩展ID
-        const extensionId = chrome.runtime.id;
-
-        // 始终使用localhost:3000作为登录URL，确保参数名使用extension_id而不是extensionId
-        const loginUrl = `http://localhost:3000/?extension_id=${extensionId}`;
-
-        console.log('打开登录页面:', loginUrl);
-
-        // 在新标签页中打开登录页面
-        chrome.tabs.create({ url: loginUrl });
-
-        // 重置按钮状态
-        loginBtn.textContent = '登录 / 创建账号';
-        loginBtn.disabled = false;
-      } catch (error) {
-        console.error('打开登录页面失败:', error);
-        alert('打开登录页面失败，请稍后再试。');
-
-        // 重置按钮
-        loginBtn.textContent = '登录 / 创建账号';
-        loginBtn.disabled = false;
-      }
-    });
-
-    // 监听存储变化，检测认证状态变化
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-      console.log('存储变化 - namespace:', namespace, 'changes:', changes);
-
-      // 如果chrome.storage.local发生变化，并且是认证相关的数据
-      if (namespace === 'local' &&
-         (changes.clerkToken || changes.clerkUser || changes.authComplete)) {
-        console.log('检测到认证相关数据变化');
-
-        // 检查认证状态并更新UI
-        checkAuthAndUpdateUI();
-      }
+  if (signinBtn) {
+    signinBtn.addEventListener('click', function() {
+      openAuthPage('sign-in');
     });
   }
 
-  // 账户管理按钮点击事件
-  if (accountBtn) {
-    accountBtn.addEventListener('click', function() {
-      chrome.tabs.create({ url: chrome.runtime.getURL('account.html') });
+  // 登出按钮点击事件
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function() {
+      logout();
     });
   }
 
-  // 绑定调试工具事件
-  const testBackendButton = document.getElementById('test-backend-button');
-  const debugInfoElement = document.getElementById('debug-info');
+  // Pro用户登出按钮
+  if (proLogoutBtn) {
+    proLogoutBtn.addEventListener('click', function() {
+      logout();
+    });
+  }
 
-  // 测试后端连接按钮
-  testBackendButton.addEventListener('click', async () => {
-    testBackendButton.disabled = true;
-    testBackendButton.textContent = 'Testing...';
-    debugInfoElement.style.display = 'block';
-    debugInfoElement.textContent = 'Testing backend connection...';
+  // 监听存储变化，检测认证状态变化
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    console.log('存储变化 - namespace:', namespace, 'changes:', changes);
 
-    try {
-      const result = await testBackendConnection();
-      console.log('后端连接测试结果:', result);
-      debugInfoElement.textContent = JSON.stringify(result, null, 2);
-    } catch (error) {
-      console.error('测试后端连接失败:', error);
-      debugInfoElement.textContent = `测试失败: ${error.message}\n${error.stack || ''}`;
-    } finally {
-      testBackendButton.disabled = false;
-      testBackendButton.textContent = 'Test Backend Connection';
+    // 如果chrome.storage.local发生变化，并且是认证相关的数据
+    if (namespace === 'local' &&
+       (changes.clerkToken || changes.clerkUser || changes.authComplete)) {
+      console.log('检测到认证相关数据变化');
+
+      // 检查认证状态并更新UI
+      checkAuthAndUpdateUI();
     }
   });
 });
+
+/**
+ * 打开认证页面
+ */
+function openAuthPage(page = 'sign-in') {
+  try {
+    console.log(`打开${page}页面...`);
+
+    // 获取扩展ID
+    const extensionId = chrome.runtime.id;
+
+    // 使用nextjs后端的URL并添加扩展ID参数
+    const authUrl = `http://localhost:3000/${page}?extension_id=${extensionId}`;
+
+    console.log('打开认证页面:', authUrl);
+
+    // 在新标签页中打开登录页面
+    chrome.tabs.create({ url: authUrl });
+  } catch (error) {
+    console.error('打开认证页面失败:', error);
+    alert('打开认证页面失败，请稍后再试。');
+  }
+}
+
+/**
+ * 退出登录
+ */
+function logout() {
+  chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
+    console.log('已清除认证数据');
+    checkAuthAndUpdateUI();
+  });
+}
 
 /**
  * 获取订阅数据
@@ -199,11 +173,7 @@ function updateActiveTab(hidden) {
         } catch (e) {
           console.error('发送消息时出错:', e);
         }
-      } else {
-        console.log('当前标签页不是HTTP/HTTPS页面，跳过更新');
       }
-    } else {
-      console.log('没有活动标签页');
     }
   });
 }
@@ -213,13 +183,9 @@ function updateActiveTab(hidden) {
  */
 function updateButtonState(button, isHidden) {
   if (isHidden) {
-    button.textContent = '显示进度条';
-    button.classList.remove('active');
-    button.classList.add('inactive');
+    button.textContent = "SHOW";
   } else {
-    button.textContent = '隐藏进度条';
-    button.classList.remove('inactive');
-    button.classList.add('active');
+    button.textContent = "HIDE";
   }
 }
 
@@ -227,52 +193,53 @@ function updateButtonState(button, isHidden) {
  * 检查认证状态并更新UI
  */
 function checkAuthAndUpdateUI() {
-  // 从本地存储中获取认证状态
-  chrome.storage.local.get(['clerkToken', 'clerkUser'], function(result) {
+  chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete'], async function(data) {
+    console.log('检查认证状态:', data);
+
     const notLoggedInSection = document.getElementById('not-logged-in');
-    const loggedInSection = document.getElementById('logged-in');
+    const freeUserSection = document.getElementById('free-user');
+    const proUserSection = document.getElementById('pro-user');
+
+    const userAvatarElement = document.getElementById('user-avatar');
     const userNameElement = document.getElementById('user-name');
 
-    if (result.clerkToken && result.clerkUser) {
-      console.log('用户已登录:', result.clerkUser);
+    // 隐藏所有部分
+    notLoggedInSection.style.display = 'none';
+    freeUserSection.style.display = 'none';
+    proUserSection.style.display = 'none';
 
-      // 更新UI显示已登录状态
-      if (notLoggedInSection) notLoggedInSection.style.display = 'none';
-      if (loggedInSection) loggedInSection.style.display = 'block';
+    // 检查用户是否已登录
+    const isSignedIn = !!(data.clerkToken && data.clerkUser);
 
-      // 显示用户名
-      if (userNameElement && result.clerkUser) {
-        userNameElement.textContent = result.clerkUser.firstName ||
-                                     result.clerkUser.email.split('@')[0];
+    if (isSignedIn) {
+      const user = JSON.parse(data.clerkUser);
+      console.log('已登录的用户:', user);
+
+      // 获取用户订阅数据
+      const subscription = await getSubscriptionData();
+      console.log('订阅数据:', subscription);
+
+      // 设置用户头像和名称
+      if (userAvatarElement) {
+        const firstLetter = (user.firstName || user.email || 'U').charAt(0).toUpperCase();
+        userAvatarElement.textContent = firstLetter;
       }
 
-      // 获取并显示订阅状态
-      getSubscriptionData().then(subscription => {
-        const subscriptionStatusElement = document.getElementById('subscription-status');
-        const proBadgeElement = document.getElementById('pro-badge');
-        const freeBadgeElement = document.getElementById('free-badge');
+      if (userNameElement) {
+        userNameElement.textContent = user.firstName || user.email.split('@')[0];
+      }
 
-        if (subscriptionStatusElement) {
-          subscriptionStatusElement.textContent = subscription.status === 'active' ?
-                                               'Pro 订阅' : '免费版';
-        }
-
-        if (proBadgeElement && freeBadgeElement) {
-          if (subscription.status === 'active') {
-            proBadgeElement.style.display = 'inline-block';
-            freeBadgeElement.style.display = 'none';
-          } else {
-            proBadgeElement.style.display = 'none';
-            freeBadgeElement.style.display = 'inline-block';
-          }
-        }
-      });
+      // 根据订阅状态显示不同UI
+      if (subscription.status === 'active' || subscription.status === 'pro') {
+        // Pro用户
+        proUserSection.style.display = 'block';
+      } else {
+        // 免费用户
+        freeUserSection.style.display = 'block';
+      }
     } else {
-      console.log('用户未登录');
-
-      // 更新UI显示未登录状态
-      if (notLoggedInSection) notLoggedInSection.style.display = 'block';
-      if (loggedInSection) loggedInSection.style.display = 'none';
+      // 未登录状态
+      notLoggedInSection.style.display = 'block';
     }
   });
 }

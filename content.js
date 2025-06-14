@@ -1123,43 +1123,52 @@ function toggleProgressBarVisibility(forceHidden) {
   }
 
   // 检查当前是否隐藏，或使用强制值
-  const isCurrentlyHidden = progressBarContainer.style.display === "none";
-  const shouldBeHidden = forceHidden !== undefined ? forceHidden : !isCurrentlyHidden;
+  let isCurrentlyHidden;
 
-  console.log('切换进度条可见性:', {
-    当前是否隐藏: isCurrentlyHidden,
-    目标状态: shouldBeHidden ? '隐藏' : '显示',
-    强制参数: forceHidden
+  // 先查询存储中的状态，确保我们有正确的初始状态
+  chrome.storage.sync.get(['dayProgressBarHidden'], function(result) {
+    // 优先使用存储中的状态，如果不存在才使用DOM状态
+    isCurrentlyHidden = result.dayProgressBarHidden !== undefined ?
+                        result.dayProgressBarHidden :
+                        progressBarContainer.style.display === "none";
+
+    const shouldBeHidden = forceHidden !== undefined ? forceHidden : !isCurrentlyHidden;
+
+    console.log('切换进度条可见性:', {
+      当前是否隐藏: isCurrentlyHidden,
+      目标状态: shouldBeHidden ? '隐藏' : '显示',
+      强制参数: forceHidden
+    });
+
+    // 保存隐藏状态到存储
+    chrome.storage.sync.set({ "dayProgressBarHidden": shouldBeHidden });
+
+    // 更新按钮文本
+    const hideBtn = document.getElementById("day-progress-hide-btn");
+    if (hideBtn) {
+      hideBtn.textContent = shouldBeHidden ? "Show" : "Hide";
+      // 使用灰色次要按钮样式
+      hideBtn.style.backgroundColor = "#f1f3f4";
+      hideBtn.style.color = "#5f6368";
+      hideBtn.style.flex = "1";
+      hideBtn.style.height = "100%";
+      hideBtn.style.lineHeight = "36px";
+      hideBtn.style.margin = "0";
+      hideBtn.style.padding = "0";
+    }
+
+    // 切换可见性 - 立即应用
+    progressBarContainer.style.display = shouldBeHidden ? "none" : "flex";
+
+    // 关闭设置面板
+    const settingsPanel = document.getElementById("day-progress-settings-panel");
+    if (settingsPanel) {
+      settingsPanel.style.display = "none";
+      document.removeEventListener('click', closeSettingsPanelOnClickOutside);
+    }
   });
 
-  // 保存隐藏状态到存储
-  chrome.storage.sync.set({ "dayProgressBarHidden": shouldBeHidden });
-
-  // 更新按钮文本
-  const hideBtn = document.getElementById("day-progress-hide-btn");
-  if (hideBtn) {
-    hideBtn.textContent = shouldBeHidden ? "Show" : "Hide";
-    // 使用灰色次要按钮样式
-    hideBtn.style.backgroundColor = "#f1f3f4";
-    hideBtn.style.color = "#5f6368";
-    hideBtn.style.flex = "1";
-    hideBtn.style.height = "100%";
-    hideBtn.style.lineHeight = "36px";
-    hideBtn.style.margin = "0";
-    hideBtn.style.padding = "0";
-  }
-
-  // 切换可见性 - 立即应用
-  progressBarContainer.style.display = shouldBeHidden ? "none" : "flex";
-
-  // 关闭设置面板
-  const settingsPanel = document.getElementById("day-progress-settings-panel");
-  if (settingsPanel) {
-    settingsPanel.style.display = "none";
-    document.removeEventListener('click', closeSettingsPanelOnClickOutside);
-  }
-
-  return shouldBeHidden;
+  return true; // 返回true表示操作正在执行
 }
 
 // 在文件顶部添加消息监听器

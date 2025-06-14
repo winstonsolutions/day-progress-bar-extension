@@ -208,10 +208,12 @@ function updateActiveTab(hidden) {
                     if (errorMsg.includes('cannot access') ||
                         errorMsg.includes('cannot be accessed') ||
                         errorMsg.includes('cannot run scripts') ||
-                        errorMsg.includes('permission')) {
+                        errorMsg.includes('permission') ||
+                        errorMsg.includes('extensions gallery') ||
+                        errorMsg.includes('cannot be scripted')) {
                       console.log(`标签页 ${tab.id} 是受限页面，无法注入内容脚本:`, errorMsg);
                     } else {
-                      console.error(`无法向标签页 ${tab.id} 注入内容脚本:`, errorMsg);
+                      console.log(`无法向标签页 ${tab.id} 注入内容脚本:`, errorMsg);
                     }
                   } else {
                     // 脚本注入成功后重试发送消息
@@ -238,7 +240,7 @@ function updateActiveTab(hidden) {
             }
           );
         } catch (e) {
-          console.error(`向标签页 ${tab.id} 发送消息时出错:`, e);
+          console.log(`向标签页 ${tab.id} 发送消息时出错:`, e);
         }
       }
     });
@@ -259,8 +261,12 @@ function updateActiveTab(hidden) {
 function updateButtonState(button, isHidden) {
   if (isHidden) {
     button.textContent = "SHOW";
+    button.style.backgroundColor = "#4285F4"; // Google blue when showing SHOW button
+    button.style.color = "white"; // Set text color to white for SHOW
   } else {
     button.textContent = "HIDE";
+    button.style.backgroundColor = "#f1f3f4"; // Light gray when showing HIDE button
+    button.style.color = "black"; // Set text color to black for HIDE
   }
 
   // 添加日志，便于调试

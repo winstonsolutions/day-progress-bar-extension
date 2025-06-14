@@ -201,7 +201,18 @@ function updateActiveTab(hidden) {
                   files: ['content.js']
                 }, function() {
                   if (chrome.runtime.lastError) {
-                    console.error(`无法向标签页 ${tab.id} 注入内容脚本:`, chrome.runtime.lastError.message);
+                    // 改进错误处理 - 检查是否为受限页面
+                    const errorMsg = chrome.runtime.lastError.message || '';
+
+                    // 判断是否为常见的受限页面错误
+                    if (errorMsg.includes('cannot access') ||
+                        errorMsg.includes('cannot be accessed') ||
+                        errorMsg.includes('cannot run scripts') ||
+                        errorMsg.includes('permission')) {
+                      console.log(`标签页 ${tab.id} 是受限页面，无法注入内容脚本:`, errorMsg);
+                    } else {
+                      console.error(`无法向标签页 ${tab.id} 注入内容脚本:`, errorMsg);
+                    }
                   } else {
                     // 脚本注入成功后重试发送消息
                     setTimeout(() => {
@@ -209,7 +220,9 @@ function updateActiveTab(hidden) {
                         tab.id,
                         { action: 'toggleProgressBar', hidden: hidden },
                         function(innerResponse) {
-                          if (innerResponse && innerResponse.success) {
+                          if (chrome.runtime.lastError) {
+                            console.log(`重试发送消息失败:`, chrome.runtime.lastError.message);
+                          } else if (innerResponse && innerResponse.success) {
                             updatedTabs++;
                             console.log(`标签页 ${tab.id} 成功更新`);
                           }

@@ -128,13 +128,29 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             files: ['content.js']
           }, function() {
             if (chrome.runtime.lastError) {
-              console.error(`无法向标签页 ${tabId} 注入内容脚本:`, chrome.runtime.lastError.message);
+              // 改进错误处理 - 检查是否为受限页面
+              const errorMsg = chrome.runtime.lastError.message || '';
+
+              // 判断是否为常见的受限页面错误
+              if (errorMsg.includes('cannot access') ||
+                  errorMsg.includes('cannot be accessed') ||
+                  errorMsg.includes('cannot run scripts') ||
+                  errorMsg.includes('permission')) {
+                console.log(`标签页 ${tabId} 是受限页面，无法注入内容脚本:`, errorMsg);
+              } else {
+                console.error(`无法向标签页 ${tabId} 注入内容脚本:`, errorMsg);
+              }
             } else {
               // 脚本注入成功后，应用进度条状态
               setTimeout(() => {
                 chrome.tabs.sendMessage(tabId, {
                   action: 'toggleProgressBar',
                   hidden: currentProgressBarState.hidden
+                }, function(response) {
+                  // 添加错误处理，防止消息发送失败
+                  if (chrome.runtime.lastError) {
+                    console.log(`向标签页 ${tabId} 发送消息失败:`, chrome.runtime.lastError.message);
+                  }
                 });
               }, 200);
             }

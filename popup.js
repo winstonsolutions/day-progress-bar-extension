@@ -1,6 +1,7 @@
 // Import the API module and auth module
-import { testBackendConnection } from './api.js';
+import { testBackendConnection, initSupabase, getUserFromSupabase } from './api.js';
 import { signOut } from './clerk-auth.js';
+import SUPABASE_CONFIG from './supabase-config.js';
 
 // 当弹出界面加载时，初始化按钮状态
 document.addEventListener('DOMContentLoaded', async function() {
@@ -27,6 +28,32 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.querySelector('h1').addEventListener('dblclick', function() {
       showDebugInfo();
     });
+  }
+
+  // 初始化Supabase
+  if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
+    try {
+      const supabaseClient = initSupabase(
+        SUPABASE_CONFIG.SUPABASE_URL,
+        SUPABASE_CONFIG.SUPABASE_ANON_KEY
+      );
+      if (supabaseClient) {
+        console.log('Supabase初始化成功');
+        if (debug) {
+          debugStatus.textContent += '\nSupabase: 已连接';
+        }
+      } else {
+        console.error('Supabase初始化失败');
+        if (debug) {
+          debugStatus.textContent += '\nSupabase: 连接失败';
+        }
+      }
+    } catch (error) {
+      console.error('Supabase初始化错误:', error);
+      if (debug) {
+        debugStatus.textContent += '\nSupabase错误: ' + error.message;
+      }
+    }
   }
 
   // 检查认证状态
@@ -325,128 +352,104 @@ function showDebugInfo() {
 /**
  * 检查认证状态并更新UI
  */
-function checkAuthAndUpdateUI() {
-  chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete'], async function(data) {
-    console.log('检查认证状态:', data);
+async function checkAuthAndUpdateUI() {
+  const notLoggedInSection = document.getElementById('not-logged-in');
+  const freeUserSection = document.getElementById('free-user');
+  const proUserSection = document.getElementById('pro-user');
+  const userAvatar = document.getElementById('user-avatar');
+  const userName = document.getElementById('user-name');
+  const debugStatus = document.getElementById('debug-status');
 
-    const notLoggedInSection = document.getElementById('not-logged-in');
-    const freeUserSection = document.getElementById('free-user');
-    const proUserSection = document.getElementById('pro-user');
-    const debugStatus = document.getElementById('debug-status');
+  console.log('检查认证状态...');
 
-    const userAvatarElement = document.getElementById('user-avatar');
-    const userNameElement = document.getElementById('user-name');
+  try {
+    // 从本地存储中获取认证数据
+    const authData = await new Promise((resolve) => {
+      chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete'], (result) => {
+        resolve(result);
+      });
+    });
 
-    // Update debug information
-    let debugText = '';
-    if (data.clerkToken) {
-      debugText += `Token found (${data.clerkToken.substring(0, 10)}...)\n`;
+    console.log('获取到的认证数据:', authData);
+
+    // 检查是否有有效的Clerk用户
+    if (authData.clerkUser && authData.authComplete) {
+      console.log('用户已登录:', authData.clerkUser);
+
+      // 尝试从Supabase获取用户数据
+      let supabaseUserData = null;
+      if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
+        try {
+          supabaseUserData = await getUserFromSupabase(authData.clerkUser.id);
+          console.log('从Supabase获取的用户数据:', supabaseUserData);
+        } catch (error) {
+          console.error('从Supabase获取用户数据失败:', error);
+        }
+      }
+
+      // 获取订阅状态
+      const subscription = await getSubscriptionData();
+      console.log('用户订阅状态:', subscription);
+
+      // 更新UI - 隐藏未登录部分，显示登录后部分
+      notLoggedInSection.style.display = 'none';
+
+      // 根据订阅状态决定显示免费或Pro版UI
+      if (subscription.status === 'pro') {
+        freeUserSection.style.display = 'none';
+        proUserSection.style.display = 'block';
+      } else {
+        // 默认为免费用户
+        freeUserSection.style.display = 'block';
+        proUserSection.style.display = 'none';
+
+        // 更新用户头像和名称
+        const firstName = authData.clerkUser.firstName || '';
+        const lastName = authData.clerkUser.lastName || '';
+        const fullName = firstName
+          ? firstName + (lastName ? ' ' + lastName : '')
+          : authData.clerkUser.emailAddresses?.[0]?.emailAddress || 'User';
+
+        if (userAvatar) {
+          userAvatar.textContent = firstName ? firstName.charAt(0).toUpperCase() : 'U';
+        }
+        if (userName) {
+          userName.textContent = fullName;
+        }
+      }
+
+      // 更新调试信息
+      if (debugStatus) {
+        debugStatus.textContent = `已登录: ${authData.clerkUser.emailAddresses?.[0]?.emailAddress || 'Unknown Email'}\n`;
+        debugStatus.textContent += `订阅状态: ${subscription.status}\n`;
+        if (supabaseUserData) {
+          debugStatus.textContent += `Supabase用户ID: ${supabaseUserData.id}`;
+        }
+      }
     } else {
-      debugText += 'No token found\n';
-    }
+      console.log('用户未登录');
 
-    // 隐藏所有部分
-    notLoggedInSection.style.display = 'none';
+      // 更新UI - 显示未登录部分，隐藏登录后部分
+      notLoggedInSection.style.display = 'block';
+      freeUserSection.style.display = 'none';
+      proUserSection.style.display = 'none';
+
+      // 更新调试信息
+      if (debugStatus) {
+        debugStatus.textContent = '未登录状态';
+      }
+    }
+  } catch (error) {
+    console.error('检查认证状态出错:', error);
+
+    // 发生错误时显示未登录状态
+    notLoggedInSection.style.display = 'block';
     freeUserSection.style.display = 'none';
     proUserSection.style.display = 'none';
 
-    // 检查用户是否已登录
-    const isSignedIn = !!(data.clerkToken && data.clerkUser);
-    console.log('用户登录状态:', isSignedIn);
-    debugText += `Login state: ${isSignedIn ? 'Signed in' : 'Not signed in'}\n`;
-
-    if (isSignedIn) {
-      console.log('用户已登录，准备显示用户信息');
-      debugText += 'User is logged in, preparing to show user info\n';
-
-      let user;
-
-      // 检查clerkUser是字符串还是对象
-      if (typeof data.clerkUser === 'string') {
-        try {
-          user = JSON.parse(data.clerkUser);
-          debugText += `Successfully parsed user data\n`;
-        } catch (e) {
-          console.error('解析用户数据失败:', e);
-          debugText += `Failed to parse user data: ${e.message}\n`;
-          user = { id: 'error', firstName: 'Error', lastName: '', email: '' };
-        }
-      } else {
-        user = data.clerkUser;
-        debugText += `Using user data as object\n`;
-      }
-
-      console.log('已登录的用户:', user);
-
-      // 获取用户订阅数据
-      const subscription = await getSubscriptionData();
-      console.log('订阅数据:', subscription);
-
-      // 确保登录用户显示为试用或Pro状态
-      if (subscription.status !== 'active' && subscription.status !== 'pro') {
-        // 自动创建试用订阅数据
-        console.log('为登录用户创建试用订阅数据');
-        const trialEndDate = new Date();
-        trialEndDate.setDate(trialEndDate.getDate() + 7); // 7天试用期
-
-        const updatedSubscription = {
-          status: 'trial',
-          features: {
-            countdown: true
-          },
-          trialStarted: new Date().toISOString(),
-          trialEnds: trialEndDate.toISOString()
-        };
-
-        // 保存更新的订阅数据
-        chrome.storage.sync.set({ subscription: updatedSubscription }, function() {
-          console.log('已更新订阅状态为试用期:', updatedSubscription);
-        });
-
-        // 使用更新后的订阅数据
-        debugText += `Created trial subscription for logged in user\n`;
-        subscription.status = 'trial';
-      }
-
-      debugText += `Subscription status: ${subscription.status}\n`;
-
-      // 设置用户头像和名称
-      if (userAvatarElement) {
-        const firstLetter = (user.firstName || (user.email ? user.email.charAt(0) : 'U')).toUpperCase();
-        userAvatarElement.textContent = firstLetter;
-        console.log('设置用户头像:', firstLetter);
-        debugText += `Avatar set to: ${firstLetter}\n`;
-      }
-
-      if (userNameElement) {
-        const displayName = user.firstName || (user.email ? user.email.split('@')[0] : 'User');
-        userNameElement.textContent = displayName;
-        console.log('设置用户名称:', displayName);
-        debugText += `Username set to: ${displayName}\n`;
-      }
-
-      // 根据订阅状态显示不同UI
-      if (subscription.status === 'active' || subscription.status === 'pro' || subscription.status === 'trial') {
-        // Pro用户或试用用户
-        console.log('显示Pro用户界面');
-        debugText += `Displaying PRO user interface\n`;
-        proUserSection.style.display = 'block';
-      } else {
-        // 免费用户
-        console.log('显示免费用户界面');
-        debugText += `Displaying FREE user interface\n`;
-        freeUserSection.style.display = 'block';
-      }
-    } else {
-      // 未登录状态
-      console.log('用户未登录，显示登录界面');
-      debugText += `Displaying login interface\n`;
-      notLoggedInSection.style.display = 'block';
-    }
-
-    // Update debug display
+    // 更新调试信息
     if (debugStatus) {
-      debugStatus.textContent = debugText;
+      debugStatus.textContent = `认证检查错误: ${error.message}`;
     }
-  });
+  }
 }

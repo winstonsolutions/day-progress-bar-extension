@@ -3,8 +3,9 @@
  * 使用Stripe Checkout进行支付
  */
 
-import { createCheckoutSession } from './api.js';
+import { createCheckoutSession, initSupabase, createOrUpdateUserInSupabase } from './api.js';
 import { initClerk, openSignInModal, getCurrentUser, isAuthenticated } from './clerk-auth.js';
+import SUPABASE_CONFIG from './supabase-config.js';
 
 // 常量定义
 const MONTHLY_PRICE = 1.99;
@@ -24,6 +25,21 @@ async function initPaymentPage() {
     console.error('Failed to initialize Clerk:', error);
   }
 
+  // 初始化Supabase
+  if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
+    try {
+      const supabaseClient = initSupabase(
+        SUPABASE_CONFIG.SUPABASE_URL,
+        SUPABASE_CONFIG.SUPABASE_ANON_KEY
+      );
+      if (supabaseClient) {
+        console.log('Supabase初始化成功');
+      }
+    } catch (error) {
+      console.error('Supabase初始化错误:', error);
+    }
+  }
+
   // 确保用户已经登录
   if (!isAuthenticated()) {
     try {
@@ -38,6 +54,11 @@ async function initPaymentPage() {
         emailInput.value = user.email;
         emailInput.disabled = true; // 禁用输入框，防止修改
       }
+
+      // 同步用户数据到Supabase
+      if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
+        await syncUserToSupabase(user);
+      }
     } catch (error) {
       console.error('Authentication failed:', error);
       window.history.back(); // 返回上一页
@@ -49,6 +70,11 @@ async function initPaymentPage() {
     if (emailInput && user && user.email) {
       emailInput.value = user.email;
       emailInput.disabled = true; // 禁用输入框，防止修改
+    }
+
+    // 同步用户数据到Supabase
+    if (SUPABASE_CONFIG.SUPABASE_ENABLED && user) {
+      await syncUserToSupabase(user);
     }
   }
 
@@ -64,6 +90,37 @@ async function initPaymentPage() {
   // 绑定结账按钮点击事件
   if (checkoutButton) {
     checkoutButton.addEventListener('click', handleCheckout);
+  }
+}
+
+/**
+ * 同步用户数据到Supabase
+ * @param {Object} user - Clerk用户对象
+ */
+async function syncUserToSupabase(user) {
+  if (!user || !user.id) {
+    console.error('无效的用户对象');
+    return;
+  }
+
+  try {
+    console.log('同步用户数据到Supabase:', user.id);
+    const result = await createOrUpdateUserInSupabase({
+      clerkId: user.id,
+      email: user.email,
+      firstName: user.firstName || null,
+      lastName: user.lastName || null
+    });
+
+    if (result.error) {
+      console.error('Supabase用户同步失败:', result.error);
+    } else if (result.created) {
+      console.log('在Supabase中创建了新用户');
+    } else if (result.updated) {
+      console.log('在Supabase中更新了现有用户');
+    }
+  } catch (error) {
+    console.error('Supabase用户同步过程中出错:', error);
   }
 }
 
@@ -94,6 +151,11 @@ async function handleCheckout(event) {
       // 更新邮箱输入框
       if (emailInput) {
         emailInput.value = user.email;
+      }
+
+      // 同步用户数据到Supabase
+      if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
+        await syncUserToSupabase(user);
       }
     } catch (error) {
       console.error('Authentication failed:', error);

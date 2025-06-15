@@ -99,11 +99,11 @@ function setupContextMenu() {
   });
 }
 
-// Open subscription page when menu item clicked
+// Open backend home page when menu item clicked
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'manage-subscription') {
     chrome.tabs.create({
-      url: chrome.runtime.getURL('subscription.html')
+      url: 'http://localhost:3000'
     });
   }
 });
@@ -177,9 +177,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'openSubscription') {
-    chrome.tabs.create({
-      url: chrome.runtime.getURL('subscription.html')
-    });
+    // Redirect to backend home or specific URL if provided
+    const url = message.url || 'http://localhost:3000';
+    console.log('打开订阅页面或后端主页:', url);
+    chrome.tabs.create({ url });
     sendResponse({ success: true });
     return true;
   }

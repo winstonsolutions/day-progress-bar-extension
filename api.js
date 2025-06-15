@@ -26,6 +26,229 @@ window.API_BASE_URL = API_BASE_URL;
 
 console.log('API_BASE_URL set to global window:', API_BASE_URL);
 
+// Supabase配置
+let SUPABASE_URL = '';
+let SUPABASE_ANON_KEY = '';
+
+// 加载Supabase URL和匿名密钥
+try {
+  SUPABASE_URL = localStorage.getItem('supabaseUrl') || '';
+  SUPABASE_ANON_KEY = localStorage.getItem('supabaseAnonKey') || '';
+  console.log('Supabase配置已加载', { SUPABASE_URL: SUPABASE_URL ? '已配置' : '未配置' });
+} catch (e) {
+  console.error('无法加载Supabase配置:', e);
+}
+
+// Supabase客户端对象
+let supabaseClient = null;
+
+/**
+ * 初始化Supabase客户端
+ * @param {string} url - Supabase项目URL
+ * @param {string} anonKey - Supabase匿名公共密钥
+ * @returns {Object} - Supabase客户端实例
+ */
+function initSupabase(url = null, anonKey = null) {
+  // 如果没有提供参数，使用已存储的值
+  const supabaseUrl = url || SUPABASE_URL;
+  const supabaseAnonKey = anonKey || SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Supabase URL或匿名密钥未设置');
+    return null;
+  }
+
+  try {
+    // 检查是否已加载Supabase
+    if (typeof supabase === 'undefined') {
+      console.error('Supabase客户端库未加载。请确保在HTML中包含了supabase-js脚本');
+      return null;
+    }
+
+    // 创建客户端
+    supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+    console.log('Supabase客户端初始化成功');
+
+    // 存储配置到localStorage
+    localStorage.setItem('supabaseUrl', supabaseUrl);
+    localStorage.setItem('supabaseAnonKey', supabaseAnonKey);
+
+    return supabaseClient;
+  } catch (error) {
+    console.error('初始化Supabase客户端失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 设置Supabase配置
+ * @param {string} url - Supabase项目URL
+ * @param {string} anonKey - Supabase匿名公共密钥
+ */
+function setSupabaseConfig(url, anonKey) {
+  SUPABASE_URL = url;
+  SUPABASE_ANON_KEY = anonKey;
+  return initSupabase(url, anonKey);
+}
+
+/**
+ * 使用Supabase获取用户信息
+ * @param {string} clerkId - Clerk用户ID
+ * @returns {Promise<Object>} - 用户数据
+ */
+async function getUserFromSupabase(clerkId) {
+  if (!supabaseClient) {
+    try {
+      supabaseClient = initSupabase();
+    } catch (e) {
+      console.error('无法初始化Supabase客户端:', e);
+      return null;
+    }
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('users')
+      .select('*')
+      .eq('clerk_id', clerkId)
+      .single();
+
+    if (error) {
+      console.error('从Supabase获取用户数据失败:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Supabase查询失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 使用Supabase创建或更新用户
+ * @param {Object} userData - 用户数据
+ * @param {string} userData.clerkId - Clerk用户ID
+ * @param {string} userData.email - 用户邮箱
+ * @param {string} userData.firstName - 用户名
+ * @param {string} userData.lastName - 用户姓
+ * @returns {Promise<Object>} - 创建/更新的用户数据
+ */
+async function createOrUpdateUserInSupabase(userData) {
+  if (!supabaseClient) {
+    try {
+      supabaseClient = initSupabase();
+      if (!supabaseClient) {
+        throw new Error('Supabase客户端未初始化');
+      }
+    } catch (e) {
+      console.error('无法初始化Supabase客户端:', e);
+      return { error: e.message };
+    }
+  }
+
+  try {
+    // 先检查用户是否存在
+    const { data: existingUser } = await supabaseClient
+      .from('users')
+      .select('id')
+      .eq('clerk_id', userData.clerkId)
+      .maybeSingle();
+
+    if (existingUser) {
+      // 更新用户
+      const { data, error } = await supabaseClient
+        .from('users')
+        .update({
+          email: userData.email,
+          first_name: userData.firstName || null,
+          last_name: userData.lastName || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('clerk_id', userData.clerkId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('更新Supabase用户失败:', error);
+        return { error: error.message };
+      }
+
+      return { data, updated: true };
+    } else {
+      // 创建用户
+      const { data, error } = await supabaseClient
+        .from('users')
+        .insert({
+          clerk_id: userData.clerkId,
+          email: userData.email,
+          first_name: userData.firstName || null,
+          last_name: userData.lastName || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('创建Supabase用户失败:', error);
+        return { error: error.message };
+      }
+
+      return { data, created: true };
+    }
+  } catch (error) {
+    console.error('Supabase用户操作失败:', error);
+    return { error: error.message };
+  }
+}
+
+/**
+ * 使用Supabase验证许可证
+ * @param {string} licenseKey - 许可证密钥
+ * @returns {Promise<Object>} - 许可证信息
+ */
+async function verifyLicenseWithSupabase(licenseKey) {
+  if (!supabaseClient) {
+    try {
+      supabaseClient = initSupabase();
+      if (!supabaseClient) {
+        throw new Error('Supabase客户端未初始化');
+      }
+    } catch (e) {
+      console.error('无法初始化Supabase客户端:', e);
+      return { valid: false, error: e.message };
+    }
+  }
+
+  try {
+    // 查询许可证数据
+    const { data, error } = await supabaseClient
+      .from('licenses')
+      .select('*, users(email)')
+      .eq('license_key', licenseKey)
+      .single();
+
+    if (error) {
+      return { valid: false, message: '无效的许可证密钥' };
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(data.expires_at);
+    const isValid = expiresAt > now;
+
+    return {
+      valid: isValid,
+      expiresAt: data.expires_at,
+      email: data.users?.email,
+      message: isValid ? '许可证有效' : '许可证已过期'
+    };
+  } catch (error) {
+    console.error('Supabase许可证验证失败:', error);
+    return { valid: false, error: error.message };
+  }
+}
+
 /**
  * 创建Stripe结账会话
  * @param {number} priceInUSD - 订阅的价格（USD）
@@ -300,5 +523,11 @@ export {
   requestLicenseKey,
   verifyPaymentStatus,
   testBackendConnection,
-  createOrUpdateUser
+  createOrUpdateUser,
+  // Supabase函数
+  initSupabase,
+  setSupabaseConfig,
+  getUserFromSupabase,
+  createOrUpdateUserInSupabase,
+  verifyLicenseWithSupabase
 };

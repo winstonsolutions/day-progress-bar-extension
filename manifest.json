@@ -40,13 +40,14 @@
     "https://*.accounts.dev/",
     "https://accounts.dev/",
     "https://api.clerk.dev/",
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "https://*.supabase.co/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.accounts.dev https://api.clerk.dev https://day-progress-bar-backend-production.up.railway.app"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://*.accounts.dev https://api.clerk.dev https://day-progress-bar-backend-production.up.railway.app https://*.supabase.co"
   },
   "oauth2": {
     "client_id": "${966163827588-v9k3ht1k0a9acbsgt26n831lda9he8qm.apps.googleusercontent.com}",
@@ -56,7 +57,8 @@
     "matches": [
       "https://day-progress-bar-backend-production.up.railway.app/*",
       "https://*.accounts.dev/*",
-      "http://localhost:3000/*"
+      "http://localhost:3000/*",
+      "https://*.supabase.co/*"
     ],
     "accepts_tls_channel_id": false
   },
@@ -75,7 +77,8 @@
       "CLERK_SETUP_GUIDE.html",
       "get-extension-id.js",
       "content-message-bridge.js",
-      "clerk-config-check.html"
+      "clerk-config-check.html",
+      "supabase-config.js"
     ],
     "matches": ["<all_urls>"]
   }]

@@ -110,75 +110,13 @@ function updateCountdownButtonVisibility() {
   }
 }
 
-// Show subscription upgrade prompt
+// Redirect to backend home page instead of showing subscription prompt
 function showSubscriptionPrompt() {
-  const container = document.createElement("div");
-  container.id = "day-progress-subscription-prompt";
-  container.style.position = "fixed";
-  container.style.bottom = "50px";
-  container.style.left = "50%";
-  container.style.transform = "translateX(-50%)";
-  container.style.backgroundColor = "rgba(255, 255, 255, 0.98)";
-  container.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.2)";
-  container.style.borderRadius = "8px";
-  container.style.padding = "20px";
-  container.style.maxWidth = "350px";
-  container.style.zIndex = "2147483647";
-  container.style.fontFamily = "'Google Sans', Roboto, Arial, sans-serif";
-  container.style.border = "1px solid rgba(0, 0, 0, 0.1)";
-
-  const title = document.createElement("h3");
-  title.textContent = "Premium Feature";
-  title.style.margin = "0 0 8px 0";
-  title.style.color = "#1a73e8";
-  title.style.fontSize = "18px";
-  container.appendChild(title);
-
-  const message = document.createElement("p");
-  message.textContent = "Unlock the countdown timer and boost your productivity. Try it free for 30 days, then $1.99/month.";
-  message.style.margin = "0 0 16px 0";
-  message.style.fontSize = "14px";
-  message.style.lineHeight = "1.5";
-  message.style.color = "#202124";
-  container.appendChild(message);
-
-  const buttonGroup = document.createElement("div");
-  buttonGroup.style.display = "flex";
-  buttonGroup.style.gap = "8px";
-
-  const closeButton = document.createElement("button");
-  closeButton.textContent = "Not Now";
-  closeButton.style.padding = "10px 16px";
-  closeButton.style.backgroundColor = "#f1f3f4";
-  closeButton.style.border = "none";
-  closeButton.style.borderRadius = "4px";
-  closeButton.style.cursor = "pointer";
-  closeButton.style.flexGrow = "1";
-  closeButton.style.fontSize = "14px";
-  closeButton.addEventListener("click", () => {
-    container.remove();
+  console.log("Redirecting to backend home page for license/subscription");
+  chrome.runtime.sendMessage({
+    action: 'openSubscription',
+    url: 'http://localhost:3000'
   });
-  buttonGroup.appendChild(closeButton);
-
-  const trialButton = document.createElement("button");
-  trialButton.textContent = "Start Free Trial";
-  trialButton.style.padding = "10px 16px";
-  trialButton.style.backgroundColor = "#1a73e8";
-  trialButton.style.color = "#fff";
-  trialButton.style.border = "none";
-  trialButton.style.borderRadius = "4px";
-  trialButton.style.cursor = "pointer";
-  trialButton.style.flexGrow = "1";
-  trialButton.style.fontSize = "14px";
-  trialButton.style.fontWeight = "500";
-  trialButton.addEventListener("click", () => {
-    chrome.runtime.sendMessage({ action: 'openSubscription' });
-    container.remove();
-  });
-  buttonGroup.appendChild(trialButton);
-
-  container.appendChild(buttonGroup);
-  document.body.appendChild(container);
 }
 
 function createTimeInputGroup(labelText, inputId, value) {
@@ -435,7 +373,12 @@ function createProgressBar() {
   });
 
   proBadge.addEventListener("click", () => {
-    chrome.runtime.sendMessage({ action: 'openSubscription' });
+    // 通过发送消息给背景脚本来打开标签页，因为内容脚本无法直接使用chrome.tabs API
+    chrome.runtime.sendMessage({
+      action: 'openSubscription',
+      url: 'http://localhost:3000'
+    });
+
     const panel = document.getElementById("day-progress-countdown-panel");
     if (panel) {
       panel.style.display = "none";
@@ -946,9 +889,12 @@ function startCountdown(durationMinutes) {
       const isLoggedIn = !!(data.clerkToken && data.clerkUser);
 
       if (!isLoggedIn) {
-        // 只有在用户未登录时才显示订阅提示
-        console.log('用户未登录，显示订阅提示');
-        showSubscriptionPrompt();
+        // 只有在用户未登录时才重定向到后端主页
+        console.log('用户未登录，重定向到后端主页');
+        chrome.runtime.sendMessage({
+          action: 'openSubscription',
+          url: 'http://localhost:3000'
+        });
         return;
       } else {
         // 用户已登录，允许使用倒计时功能，就像有Pro权限一样

@@ -65,7 +65,7 @@ async function verifyToken(token) {
       console.log('Clerk客户端API验证失败，尝试通过自己的后端验证');
 
       // 检查是否有API_BASE_URL可用
-      const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+      const API_URL = window.API_BASE_URL || 'http://localhost';
 
       try {
         // 调用自己的后端API验证token
@@ -250,7 +250,7 @@ async function handleAuthCallback(token, user) {
       // 如果调用storeUserData失败，尝试直接调用API作为备用方案
       try {
         console.log('尝试通过备用方案直接调用API保存用户数据...');
-        const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+        const API_URL = window.API_BASE_URL || 'http://localhost';
 
         const requestData = {
           clerkId: currentUser.id,
@@ -356,7 +356,7 @@ async function signOut() {
 
     // 方法3: 调用我们自己的后端API
     try {
-      const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+      const API_URL = window.API_BASE_URL || 'http://localhost';
       await fetch(`${API_URL}/api/logout`, {
         method: 'POST',
         headers: {
@@ -395,7 +395,7 @@ async function storeUserData(userData) {
   }
 
   // 确保API_BASE_URL可用，优先使用全局window变量
-  const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+  const API_URL = window.API_BASE_URL || 'http://localhost';
 
   try {
     console.log('===== 开始存储用户数据到MongoDB =====');

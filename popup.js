@@ -168,7 +168,7 @@ async function logout() {
 
       // 可选：向后端发送登出事件
       try {
-        const API_URL = window.API_BASE_URL || 'https://day-progress-bar-backend-production.up.railway.app';
+        const API_URL = window.API_BASE_URL || 'http://localhost';
         fetch(`${API_URL}/api/logout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }

@@ -6,7 +6,7 @@
 console.log('Loading api.js module...');
 
 // API基础URL - 检查是否应该使用本地部署
-let API_BASE_URL = 'https://day-progress-bar-backend-production.up.railway.app:8080'; // Railway部署URL（默认）
+let API_BASE_URL = 'http://localhost'; // 本地部署URL（默认）
 
 // 检查是否应该使用本地部署
 try {
@@ -15,7 +15,7 @@ try {
     API_BASE_URL = 'http://localhost'; // 本地部署URL
     console.log('使用本地部署的后端 API:', API_BASE_URL);
   } else {
-    console.log('使用Railway部署的后端 API:', API_BASE_URL);
+    console.log('使用本地部署的后端 API:', API_BASE_URL);
   }
 } catch (e) {
   console.error('无法访问localStorage:', e);

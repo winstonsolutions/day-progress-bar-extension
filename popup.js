@@ -1,5 +1,4 @@
-// Import the API module and auth module
-import { testBackendConnection, initSupabase, getUserFromSupabase } from './api.js';
+// Import the auth module
 import { signOut } from './clerk-auth.js';
 import SUPABASE_CONFIG from './supabase-config.js';
 
@@ -33,21 +32,23 @@ document.addEventListener('DOMContentLoaded', async function() {
   // 初始化Supabase
   if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
     try {
-      const supabaseClient = initSupabase(
-        SUPABASE_CONFIG.SUPABASE_URL,
-        SUPABASE_CONFIG.SUPABASE_ANON_KEY
+      // 在popup中，我们需要通过消息与background script通信
+      chrome.runtime.sendMessage(
+        { action: 'initSupabase', url: SUPABASE_CONFIG.SUPABASE_URL, anonKey: SUPABASE_CONFIG.SUPABASE_ANON_KEY },
+        function(response) {
+          if (response && response.success) {
+            console.log('Supabase初始化成功');
+            if (debug) {
+              debugStatus.textContent += '\nSupabase: 已连接';
+            }
+          } else {
+            console.error('Supabase初始化失败');
+            if (debug) {
+              debugStatus.textContent += '\nSupabase: 连接失败';
+            }
+          }
+        }
       );
-      if (supabaseClient) {
-        console.log('Supabase初始化成功');
-        if (debug) {
-          debugStatus.textContent += '\nSupabase: 已连接';
-        }
-      } else {
-        console.error('Supabase初始化失败');
-        if (debug) {
-          debugStatus.textContent += '\nSupabase: 连接失败';
-        }
-      }
     } catch (error) {
       console.error('Supabase初始化错误:', error);
       if (debug) {
@@ -168,7 +169,7 @@ async function logout() {
 
       // 可选：向后端发送登出事件
       try {
-        const API_URL = window.API_BASE_URL || 'http://localhost';
+        const API_URL = 'http://localhost'; // 直接使用默认值
         fetch(`${API_URL}/api/logout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
@@ -380,8 +381,20 @@ async function checkAuthAndUpdateUI() {
       let supabaseUserData = null;
       if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
         try {
-          supabaseUserData = await getUserFromSupabase(authData.clerkUser.id);
-          console.log('从Supabase获取的用户数据:', supabaseUserData);
+          // 通过消息获取Supabase用户数据
+          const supabaseUserResponse = await new Promise((resolve) => {
+            chrome.runtime.sendMessage(
+              { action: 'getUserFromSupabase', clerkId: authData.clerkUser.id },
+              (response) => {
+                resolve(response);
+              }
+            );
+          });
+
+          if (supabaseUserResponse && supabaseUserResponse.success) {
+            supabaseUserData = supabaseUserResponse.data;
+            console.log('从Supabase获取的用户数据:', supabaseUserData);
+          }
         } catch (error) {
           console.error('从Supabase获取用户数据失败:', error);
         }

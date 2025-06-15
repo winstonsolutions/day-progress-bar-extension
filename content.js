@@ -350,16 +350,20 @@ function createProgressBar() {
   // Add Pro badge
   const proBadge = document.createElement("span");
   proBadge.textContent = "PRO";
-  proBadge.style.fontSize = "11px";
+  proBadge.style.display = "inline-flex";
+  proBadge.style.alignItems = "center";
+  proBadge.style.justifyContent = "center";
+  proBadge.style.backgroundColor = "#1a73e8";
+  proBadge.style.color = "white";
+  proBadge.style.marginLeft = "8px";
+  proBadge.style.borderRadius = "4px";
+  proBadge.style.padding = "2px 6px";
+  proBadge.style.fontSize = "10px";
   proBadge.style.fontWeight = "bold";
-  proBadge.style.color = "#fff";
-  proBadge.style.backgroundColor = "#1a73e8"; // Google blue
-  proBadge.style.padding = "3px 8px";
-  proBadge.style.borderRadius = "10px";
   proBadge.style.cursor = "pointer";
   proBadge.style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)";
   proBadge.style.transition = "all 0.2s ease";
-  proBadge.title = "Click to start free trial";
+  proBadge.title = "Pro trial automatically activated upon login";
 
   // Add hover effect
   proBadge.addEventListener("mouseenter", () => {
@@ -1185,6 +1189,23 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   if (message.action === 'ping') {
     console.log('收到ping请求，回复pong');
     sendResponse({pong: true});
+    return true;
+  }
+
+  // 处理试用状态更新消息
+  if (message.action === 'trial-status-updated') {
+    console.log('收到试用状态更新:', message);
+
+    // 向页面发送消息，以便Dashboard组件可以捕获
+    window.postMessage({
+      action: 'trial-status-updated',
+      isActive: message.isActive,
+      trialStartTime: message.trialStartTime,
+      trialEndTime: message.trialEndTime,
+      source: 'day-progress-bar-extension'
+    }, "*");
+
+    sendResponse({success: true});
     return true;
   }
 

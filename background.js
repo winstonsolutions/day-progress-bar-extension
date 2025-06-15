@@ -1,3 +1,23 @@
+// Day Progress Bar - Background Script
+
+// 声明API函数变量
+let apiModule;
+try {
+  // 尝试从api.js导入函数
+  if (typeof importScripts === 'function') {
+    importScripts('api.js');
+    // 检查是否成功导入
+    if (typeof self.DayProgressBarAPI !== 'undefined') {
+      apiModule = self.DayProgressBarAPI;
+      console.log('成功导入API函数');
+    } else {
+      console.error('DayProgressBarAPI 未定义');
+    }
+  }
+} catch (e) {
+  console.error('导入API函数失败:', e);
+}
+
 // Background script for handling subscription state
 
 // Constants
@@ -6,6 +26,13 @@ const STATUS = {
   TRIAL: 'trial',
   EXPIRED: 'expired',
   FREE: 'free'
+};
+
+// 用户状态相关常量
+const USER_STATUS = {
+  FREE: 'free',
+  TRIAL: 'trial',
+  PRO: 'pro'
 };
 
 // 存储进度条当前状态
@@ -169,6 +196,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('Background script received message:', message);
+
   if (message.action === 'checkFeature') {
     isFeatureEnabled(message.feature).then(enabled => {
       sendResponse({ enabled });
@@ -190,7 +219,90 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('收到更新进度条状态的请求:', message);
     updateProgressBarState(message.hidden);
     sendResponse({ success: true });
-    return false; // 非异步响应
+    return true;
+  }
+
+  // 处理获取试用状态的请求
+  if (message.action === 'get-trial-status') {
+    console.log('收到获取试用状态的请求');
+    getUserStatus().then(status => {
+      // 检查试用状态
+      if (status.isTrialActive) {
+        // 广播试用状态到所有标签页
+        chrome.tabs.query({}, (tabs) => {
+          tabs.forEach(tab => {
+            try {
+              chrome.tabs.sendMessage(tab.id, {
+                action: "trial-status-updated",
+                isActive: true,
+                trialStartTime: status.trialStartTime,
+                trialEndTime: status.trialEndTime
+              });
+            } catch (e) {
+              // 忽略可能的错误（比如无法向某些标签页发送消息）
+              console.log(`无法向标签页 ${tab.id} 发送试用状态:`, e);
+            }
+          });
+        });
+
+        // 直接响应
+        sendResponse({
+          success: true,
+          isActive: true,
+          trialStartTime: status.trialStartTime,
+          trialEndTime: status.trialEndTime
+        });
+      } else {
+        // 没有活跃的试用
+        sendResponse({
+          success: true,
+          isActive: false
+        });
+      }
+    }).catch(error => {
+      console.error('获取试用状态失败:', error);
+      sendResponse({
+        success: false,
+        error: error.message
+      });
+    });
+    return true; // 表示我们将异步返回响应
+  }
+
+  // 处理启动试用的请求
+  if (message.action === 'start-trial') {
+    console.log('收到启动试用的请求:', message);
+    startProTrial(message.userId, message.email).then(result => {
+      if (result.success) {
+        // 广播试用状态到所有标签页
+        const trialStartTime = result.trialStartTime;
+        const trialEndTime = trialStartTime + (60 * 60 * 1000); // 1小时
+
+        chrome.tabs.query({}, (tabs) => {
+          tabs.forEach(tab => {
+            try {
+              chrome.tabs.sendMessage(tab.id, {
+                action: "trial-status-updated",
+                isActive: true,
+                trialStartTime: trialStartTime,
+                trialEndTime: trialEndTime
+              });
+            } catch (e) {
+              // 忽略可能的错误
+              console.log(`无法向标签页 ${tab.id} 发送试用状态:`, e);
+            }
+          });
+        });
+      }
+      sendResponse(result);
+    }).catch(error => {
+      console.error('启动试用失败:', error);
+      sendResponse({
+        success: false,
+        message: error.message
+      });
+    });
+    return true;
   }
 
   // 处理从dashboard.html页面接收的Clerk认证结果
@@ -263,6 +375,111 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
     }
   }
+
+  // 获取用户状态
+  if (message.action === 'get-user-status') {
+    getUserStatus().then(status => {
+      sendResponse(status);
+    });
+    return true; // 异步响应
+  }
+
+  // 购买许可证
+  if (message.action === 'buy-license') {
+    createCheckoutSession(message.price, message.email)
+      .then(result => {
+        sendResponse(result);
+      })
+      .catch(error => {
+        console.error('创建结账会话时出错:', error);
+        sendResponse({ success: false, message: error.message });
+      });
+    return true; // 异步响应
+  }
+
+  // 激活许可证
+  if (message.action === 'activate-license') {
+    activateLicense(message.licenseKey, message.userId, message.email)
+      .then(result => {
+        sendResponse(result);
+      })
+      .catch(error => {
+        console.error('激活许可证时出错:', error);
+        sendResponse({ success: false, message: error.message });
+      });
+    return true; // 异步响应
+  }
+
+  // 打开仪表盘
+  if (message.action === 'openDashboard') {
+    openDashboard()
+      .then(() => {
+        sendResponse({ success: true });
+      })
+      .catch(error => {
+        console.error('打开仪表盘时出错:', error);
+        sendResponse({ success: false, message: error.message });
+      });
+    return true; // 异步响应
+  }
+
+  // 重新打开支付页面
+  if (message.action === 'reopenPayment') {
+    openPaymentPage()
+      .then(() => {
+        sendResponse({ success: true });
+      })
+      .catch(error => {
+        console.error('打开支付页面时出错:', error);
+        sendResponse({ success: false, message: error.message });
+      });
+    return true; // 异步响应
+  }
+
+  // 处理初始化Supabase的请求
+  if (message.action === 'initSupabase') {
+    console.log('收到初始化Supabase的请求');
+    if (apiModule && typeof apiModule.initSupabase === 'function') {
+      const supabaseClient = apiModule.initSupabase(message.url, message.anonKey);
+      sendResponse({
+        success: !!supabaseClient
+      });
+    } else {
+      sendResponse({
+        success: false,
+        error: 'Supabase API模块未加载'
+      });
+    }
+    return true;
+  }
+
+  // 处理获取Supabase用户数据的请求
+  if (message.action === 'getUserFromSupabase') {
+    console.log('收到获取Supabase用户数据的请求:', message.clerkId);
+    if (apiModule && typeof apiModule.getUserFromSupabase === 'function') {
+      apiModule.getUserFromSupabase(message.clerkId)
+        .then(data => {
+          sendResponse({
+            success: true,
+            data: data
+          });
+        })
+        .catch(error => {
+          sendResponse({
+            success: false,
+            error: error.message
+          });
+        });
+    } else {
+      sendResponse({
+        success: false,
+        error: 'Supabase API模块未加载'
+      });
+    }
+    return true;
+  }
+
+  return true; // 表示我们会异步处理消息
 });
 
 // Listen for external messages (from web pages)
@@ -377,3 +594,368 @@ chrome.runtime.onInstalled.addListener(() => {
   // Initialize subscription status if not set
   checkSubscriptionStatus();
 });
+
+// 获取当前用户状态
+async function getUserStatus() {
+  try {
+    const userData = await new Promise((resolve) => {
+      chrome.storage.sync.get(['userData', 'trialData', 'licenseData'], (result) => {
+        resolve(result);
+      });
+    });
+
+    // 检查是否有有效的许可证
+    if (userData.licenseData && userData.licenseData.isActive) {
+      return {
+        isPro: true,
+        licenseKey: userData.licenseData.licenseKey
+      };
+    }
+
+    // 检查本地存储的试用状态
+    if (userData.trialData) {
+      const trialStartTime = userData.trialData.startTime;
+      const currentTime = Date.now();
+      const trialEndTime = trialStartTime + (60 * 60 * 1000); // 1小时(毫秒)
+
+      if (currentTime < trialEndTime) {
+        return {
+          isPro: false,
+          isTrialActive: true,
+          trialStartTime: trialStartTime,
+          trialEndTime: trialEndTime
+        };
+      }
+    }
+
+    // 如果本地没有试用数据，尝试从Supabase获取
+    if (userData.userData && userData.userData.email) {
+      try {
+        // 使用api.js中的函数获取用户的Supabase数据
+        if (typeof apiModule !== 'undefined' && typeof apiModule.getUserFromSupabase === 'function') {
+          const supabaseUser = await apiModule.getUserFromSupabase(userData.userData.id);
+
+          if (supabaseUser && supabaseUser.trial_started_at) {
+            const trialStartTime = new Date(supabaseUser.trial_started_at).getTime();
+            const currentTime = Date.now();
+            const trialEndTime = trialStartTime + (60 * 60 * 1000); // 1小时(毫秒)
+
+            // 如果试用未过期，更新本地存储并返回活跃状态
+            if (currentTime < trialEndTime) {
+              // 更新本地存储
+              const trialData = {
+                userId: userData.userData.id,
+                email: userData.userData.email,
+                startTime: trialStartTime,
+                status: 'trial'
+              };
+
+              chrome.storage.sync.set({ trialData });
+
+              return {
+                isPro: false,
+                isTrialActive: true,
+                trialStartTime: trialStartTime,
+                trialEndTime: trialEndTime
+              };
+            }
+          }
+        }
+      } catch (supabaseError) {
+        console.error('从Supabase获取试用状态失败:', supabaseError);
+      }
+    }
+
+    // 获取认证状态，检查是否为新用户
+    const authData = await new Promise((resolve) => {
+      chrome.storage.local.get(['clerkUser', 'authComplete'], (result) => {
+        resolve(result);
+      });
+    });
+
+    // 如果是新用户且没有试用记录，自动开始试用
+    if (authData.clerkUser && authData.authComplete) {
+      let clerkUser;
+      try {
+        clerkUser = typeof authData.clerkUser === 'string' ?
+          JSON.parse(authData.clerkUser) : authData.clerkUser;
+      } catch (e) {
+        console.error('解析用户数据失败:', e);
+        clerkUser = authData.clerkUser;
+      }
+
+      if (clerkUser && clerkUser.id) {
+        console.log('检测到新用户登录，自动启动试用');
+
+        // 开始新的试用
+        const trialData = {
+          userId: clerkUser.id,
+          email: clerkUser.email || '',
+          startTime: Date.now(),
+          status: 'trial'
+        };
+
+        // 保存试用数据
+        await new Promise((resolve) => {
+          chrome.storage.sync.set({ trialData }, () => {
+            resolve();
+          });
+        });
+
+        // 尝试同步到Supabase
+        try {
+          if (typeof apiModule !== 'undefined' && typeof apiModule.updateUserTrialStatus === 'function') {
+            await apiModule.updateUserTrialStatus(clerkUser.id, new Date(trialData.startTime).toISOString());
+          }
+        } catch (e) {
+          console.error('同步试用状态到Supabase失败:', e);
+        }
+
+        return {
+          isPro: false,
+          isTrialActive: true,
+          trialStartTime: trialData.startTime,
+          trialEndTime: trialData.startTime + (60 * 60 * 1000)
+        };
+      }
+    }
+
+    // 默认为免费用户
+    return {
+      isPro: false,
+      isTrialActive: false
+    };
+  } catch (error) {
+    console.error('获取用户状态时出错:', error);
+    return {
+      isPro: false,
+      isTrialActive: false,
+      error: error.message
+    };
+  }
+}
+
+// 开始Pro功能试用
+async function startProTrial(userId, email) {
+  try {
+    // 检查用户是否已经在试用中
+    const userData = await new Promise((resolve) => {
+      chrome.storage.sync.get(['trialData'], (result) => {
+        resolve(result);
+      });
+    });
+
+    if (userData.trialData) {
+      const trialStartTime = userData.trialData.startTime;
+      const currentTime = Date.now();
+      const trialEndTime = trialStartTime + (60 * 60 * 1000); // 1小时(毫秒)
+
+      if (currentTime < trialEndTime) {
+        return {
+          success: false,
+          message: '您已经在试用期内',
+          trialStartTime: trialStartTime,
+          trialEndTime: trialEndTime
+        };
+      }
+    }
+
+    // 开始新的试用
+    const trialData = {
+      userId: userId,
+      email: email,
+      startTime: Date.now(),
+      status: USER_STATUS.TRIAL
+    };
+
+    // 保存试用数据
+    await new Promise((resolve) => {
+      chrome.storage.sync.set({ trialData }, () => {
+        resolve();
+      });
+    });
+
+    // 同步到Supabase
+    try {
+      // 检查是否可以访问API函数
+      if (typeof apiModule.updateUserTrialStatus === 'function') {
+        console.log('同步试用状态到Supabase...');
+        await apiModule.updateUserTrialStatus(userId, new Date(trialData.startTime).toISOString());
+        console.log('成功同步试用状态到Supabase');
+      } else {
+        console.log('updateUserTrialStatus函数不可用，无法同步到Supabase');
+      }
+    } catch (supabaseError) {
+      console.error('同步试用状态到Supabase失败:', supabaseError);
+      // 继续处理，不影响本地试用
+    }
+
+    return {
+      success: true,
+      trialStartTime: trialData.startTime
+    };
+  } catch (error) {
+    console.error('开始试用时出错:', error);
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+}
+
+// 激活许可证
+async function activateLicense(licenseKey, userId, email) {
+  try {
+    if (!licenseKey) {
+      return { success: false, message: '无效的许可证密钥' };
+    }
+
+    // 验证许可证密钥
+    const isValid = await verifyLicenseKey(licenseKey);
+
+    if (!isValid.valid) {
+      return { success: false, message: isValid.message || '无效的许可证密钥' };
+    }
+
+    // 保存许可证数据
+    const licenseData = {
+      userId: userId,
+      email: email,
+      licenseKey: licenseKey,
+      activatedAt: Date.now(),
+      isActive: true
+    };
+
+    await new Promise((resolve) => {
+      chrome.storage.sync.set({ licenseData }, () => {
+        resolve();
+      });
+    });
+
+    // 可选：同步到Supabase
+    // ... code to sync license data to Supabase ...
+
+    return { success: true };
+  } catch (error) {
+    console.error('激活许可证时出错:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// 验证许可证密钥
+async function verifyLicenseKey(licenseKey) {
+  try {
+    // 从 api.js 导入的函数或直接在这里实现
+    // 首先检查本地存储中是否有这个许可证
+    const storedLicenses = await new Promise((resolve) => {
+      chrome.storage.sync.get(['validLicenses'], (result) => {
+        resolve(result.validLicenses || []);
+      });
+    });
+
+    // 检查本地存储的许可证
+    const matchedLicense = storedLicenses.find(license => license.key === licenseKey);
+    if (matchedLicense) {
+      return { valid: true };
+    }
+
+    // 如果本地没有，则调用API进行验证
+    // 实际项目中，应该调用verifyLicense API函数
+    // const apiResult = await verifyLicense(licenseKey);
+    // return apiResult;
+
+    // 模拟API验证
+    // 注意：在实际项目中，这里应该替换为真正的API调用
+    if (licenseKey.length >= 8) {
+      // 添加到本地存储以便将来验证
+      storedLicenses.push({ key: licenseKey, activatedAt: Date.now() });
+      await new Promise((resolve) => {
+        chrome.storage.sync.set({ validLicenses: storedLicenses }, () => {
+          resolve();
+        });
+      });
+
+      return { valid: true };
+    } else {
+      return { valid: false, message: '无效的许可证密钥格式' };
+    }
+  } catch (error) {
+    console.error('验证许可证时出错:', error);
+    return { valid: false, message: error.message };
+  }
+}
+
+// 创建结账会话(从payment.js中提取)
+async function createCheckoutSession(priceInUSD, email) {
+  try {
+    // 在实际项目中，这应该调用API创建Stripe结账会话
+    // 重定向到后端支付页面
+    const backendPaymentUrl = `http://localhost:3000/payment?price=${priceInUSD}&email=${encodeURIComponent(email)}`;
+
+    return {
+      success: true,
+      checkoutUrl: backendPaymentUrl
+    };
+  } catch (error) {
+    console.error('创建结账会话时出错:', error);
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+}
+
+// 打开仪表盘
+async function openDashboard() {
+  try {
+    const userData = await new Promise((resolve) => {
+      chrome.storage.sync.get(['userData'], (result) => {
+        resolve(result.userData || {});
+      });
+    });
+
+    // 检查是否有dashboardUrl，如果有直接使用
+    if (userData.dashboardUrl) {
+      chrome.tabs.create({ url: userData.dashboardUrl });
+      return;
+    }
+
+    // 没有保存的URL，使用localhost:3000
+    const dashboardUrl = 'http://localhost:3000/dashboard';
+    chrome.tabs.create({ url: dashboardUrl });
+
+    // 保存URL以便将来使用
+    chrome.storage.sync.set({
+      userData: {
+        ...userData,
+        dashboardUrl: dashboardUrl
+      }
+    });
+  } catch (error) {
+    console.error('打开仪表盘时出错:', error);
+    // 备用方案：打开后端的账户页面
+    chrome.tabs.create({ url: 'http://localhost:3000/account' });
+  }
+}
+
+// 打开支付页面
+async function openPaymentPage() {
+  try {
+    const userData = await new Promise((resolve) => {
+      chrome.storage.sync.get(['userData'], (result) => {
+        resolve(result.userData || {});
+      });
+    });
+
+    // 使用后端支付页面
+    const backendPaymentUrl = 'http://localhost:3000/payment';
+    if (userData.email) {
+      chrome.tabs.create({ url: `${backendPaymentUrl}?email=${encodeURIComponent(userData.email)}` });
+    } else {
+      chrome.tabs.create({ url: backendPaymentUrl });
+    }
+  } catch (error) {
+    console.error('打开支付页面时出错:', error);
+    chrome.tabs.create({ url: 'http://localhost:3000/payment' });
+  }
+}

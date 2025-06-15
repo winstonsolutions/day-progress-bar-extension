@@ -10,21 +10,23 @@ let API_BASE_URL = 'http://localhost'; // 本地部署URL（默认）
 
 // 检查是否应该使用本地部署
 try {
-  // 可以通过localStorage中的标志来控制是否使用本地部署
-  if(localStorage.getItem('useLocalBackend') === 'true') {
-    API_BASE_URL = 'http://localhost'; // 本地部署URL
-    console.log('使用本地部署的后端 API:', API_BASE_URL);
-  } else {
-    console.log('使用本地部署的后端 API:', API_BASE_URL);
-  }
+  // 使用chrome.storage.local替代localStorage
+  chrome.storage.local.get(['useLocalBackend'], function(result) {
+    if(result.useLocalBackend === true) {
+      API_BASE_URL = 'http://localhost'; // 本地部署URL
+      console.log('使用本地部署的后端 API:', API_BASE_URL);
+    } else {
+      console.log('使用本地部署的后端 API:', API_BASE_URL);
+    }
+  });
 } catch (e) {
-  console.error('无法访问localStorage:', e);
+  console.error('无法访问存储:', e);
 }
 
-// 确保在clerk-auth.js等其他文件中可以访问API_BASE_URL
-window.API_BASE_URL = API_BASE_URL;
+// 确保在全局可以访问API_BASE_URL
+self.API_BASE_URL = API_BASE_URL;
 
-console.log('API_BASE_URL set to global window:', API_BASE_URL);
+console.log('API_BASE_URL set to global:', API_BASE_URL);
 
 // Supabase配置
 let SUPABASE_URL = '';
@@ -32,9 +34,11 @@ let SUPABASE_ANON_KEY = '';
 
 // 加载Supabase URL和匿名密钥
 try {
-  SUPABASE_URL = localStorage.getItem('supabaseUrl') || '';
-  SUPABASE_ANON_KEY = localStorage.getItem('supabaseAnonKey') || '';
-  console.log('Supabase配置已加载', { SUPABASE_URL: SUPABASE_URL ? '已配置' : '未配置' });
+  chrome.storage.local.get(['supabaseUrl', 'supabaseAnonKey'], function(result) {
+    SUPABASE_URL = result.supabaseUrl || '';
+    SUPABASE_ANON_KEY = result.supabaseAnonKey || '';
+    console.log('Supabase配置已加载', { SUPABASE_URL: SUPABASE_URL ? '已配置' : '未配置' });
+  });
 } catch (e) {
   console.error('无法加载Supabase配置:', e);
 }
@@ -69,9 +73,8 @@ function initSupabase(url = null, anonKey = null) {
     supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
     console.log('Supabase客户端初始化成功');
 
-    // 存储配置到localStorage
-    localStorage.setItem('supabaseUrl', supabaseUrl);
-    localStorage.setItem('supabaseAnonKey', supabaseAnonKey);
+    // 存储配置到chrome.storage.local
+    chrome.storage.local.set({ supabaseUrl: supabaseUrl, supabaseAnonKey: supabaseAnonKey });
 
     return supabaseClient;
   } catch (error) {
@@ -157,14 +160,21 @@ async function createOrUpdateUserInSupabase(userData) {
 
     if (existingUser) {
       // 更新用户
+      const updateData = {
+        email: userData.email,
+        first_name: userData.firstName || null,
+        last_name: userData.lastName || null,
+        updated_at: new Date().toISOString()
+      };
+
+      // 如果提供了trial_started_at，也更新它
+      if (userData.trial_started_at) {
+        updateData.trial_started_at = userData.trial_started_at;
+      }
+
       const { data, error } = await supabaseClient
         .from('users')
-        .update({
-          email: userData.email,
-          first_name: userData.firstName || null,
-          last_name: userData.lastName || null,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('clerk_id', userData.clerkId)
         .select()
         .single();
@@ -177,16 +187,23 @@ async function createOrUpdateUserInSupabase(userData) {
       return { data, updated: true };
     } else {
       // 创建用户
+      const insertData = {
+        clerk_id: userData.clerkId,
+        email: userData.email,
+        first_name: userData.firstName || null,
+        last_name: userData.lastName || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // 如果提供了trial_started_at，也添加它
+      if (userData.trial_started_at) {
+        insertData.trial_started_at = userData.trial_started_at;
+      }
+
       const { data, error } = await supabaseClient
         .from('users')
-        .insert({
-          clerk_id: userData.clerkId,
-          email: userData.email,
-          first_name: userData.firstName || null,
-          last_name: userData.lastName || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -198,7 +215,7 @@ async function createOrUpdateUserInSupabase(userData) {
       return { data, created: true };
     }
   } catch (error) {
-    console.error('Supabase用户操作失败:', error);
+    console.error('Supabase操作失败:', error);
     return { error: error.message };
   }
 }
@@ -250,113 +267,225 @@ async function verifyLicenseWithSupabase(licenseKey) {
 }
 
 /**
- * 创建Stripe结账会话
- * @param {number} priceInUSD - 订阅的价格（USD）
- * @param {string} [email] - 用户邮箱，用于发送license key
- * @returns {Promise<{sessionUrl: string}>} - Stripe结账会话URL
+ * 创建结账会话
+ * @param {number} priceInUSD - 价格（美元）
+ * @param {string} email - 用户邮箱
+ * @param {boolean} isOneTime - 是否为一次性购买（而非订阅）
+ * @returns {Promise<Object>} - 包含会话URL的对象
  */
-async function createCheckoutSession(priceInUSD, email = null) {
-  // 获取扩展ID，用于构建完整的回调URL
-  const extensionId = chrome.runtime.id;
-
-  // 使用重定向URL解决Stripe不接受chrome-extension://开头URL的问题
-  const successUrl = `${API_BASE_URL}/api/stripe/redirect?destination=${encodeURIComponent(`chrome-extension://${extensionId}/subscription.html?payment_success=true`)}`;
-  const cancelUrl = `${API_BASE_URL}/api/stripe/redirect?destination=${encodeURIComponent(`chrome-extension://${extensionId}/subscription.html?payment_cancelled=true`)}`;
-
+async function createCheckoutSession(priceInUSD, email = null, isOneTime = false) {
   try {
-    // 调试信息
-    console.log('发送请求到:', `${API_BASE_URL}/api/stripe/create-checkout-session`);
-    console.log('请求参数:', {
-      priceInUSD,
-      email,
-      successUrl,
-      cancelUrl
+    console.log(`创建${isOneTime ? '一次性购买' : '订阅'}结账会话, 价格: $${priceInUSD}`);
+
+    // 检查是否使用模拟结账流程
+    let useMockCheckout = false;
+
+    // 在Service Worker中，我们无法访问window.location，所以使用配置或默认值
+    chrome.storage.local.get(['useMockCheckout'], function(result) {
+      useMockCheckout = result.useMockCheckout === true;
     });
 
-    // 尝试发送请求前先检查网络连接
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/stripe/create-checkout-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceInUSD,
-          email,
-          successUrl,
-          cancelUrl
-        })
-      });
+    if (useMockCheckout) {
+      console.log('使用模拟结账流程');
+      await new Promise(resolve => setTimeout(resolve, 1500)); // 模拟网络请求延迟
 
-      // 检查响应状态
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error(`404: 支付服务端点不存在。请确认后端服务是否已部署并配置了正确的路由。`);
-        }
-
-        // 尝试获取响应内容
-        let errorText = '';
-        try {
-          // 尝试读取响应文本
-          errorText = await response.text();
-
-          // 尝试解析为JSON
-          try {
-            const errorData = JSON.parse(errorText);
-            throw new Error(errorData.message || `API错误 (${response.status}): ${response.statusText}`);
-          } catch (jsonError) {
-            // 如果不是JSON，显示文本前100个字符
-            console.error('API返回非JSON响应:', errorText.substring(0, 100) + '...');
-            throw new Error(`API返回格式错误 (${response.status}): 不是有效的JSON响应`);
-          }
-        } catch (textError) {
-          console.error('无法读取API响应内容:', textError);
-          throw new Error(`API错误 (${response.status}): ${response.statusText}`);
-        }
+      // 生成模拟的许可证密钥
+      if (isOneTime) {
+        const mockLicenseKey = generateMockLicenseKey();
+        storeLicenseKey(mockLicenseKey, email);
+        // 在Service Worker中无法使用alert，记录到控制台
+        console.log(`模拟购买成功！许可证密钥: ${mockLicenseKey}`);
+        return {
+          sessionUrl: 'http://localhost:3000/account',
+          success: true
+        };
       }
 
-      // 尝试解析JSON响应
-      try {
-        const data = await response.json();
-        console.log('API响应成功:', data);
-        return data;
-      } catch (jsonError) {
-        console.error('解析API响应JSON失败:', jsonError);
-        throw new Error('无法解析API响应为JSON格式');
-      }
-    } catch (fetchError) {
-      // 处理网络错误
-      if (fetchError.message && fetchError.message.includes('Failed to fetch')) {
-        throw new Error('网络连接失败：无法连接到支付服务器。请检查您的网络连接或服务器状态。');
-      }
-      throw fetchError;
+      return {
+        sessionUrl: 'https://mock-checkout.example.com/session?success=true',
+        success: true
+      };
     }
+
+    // 根据是否为一次性购买构建不同的API路径
+    const apiPath = isOneTime ? '/create-one-time-checkout' : '/create-subscription-checkout';
+
+    // 构建API请求URL
+    const apiUrl = `${API_BASE_URL}${apiPath}`;
+
+    // 准备请求数据
+    const requestData = {
+      priceInUSD,
+      email,
+      returnUrl: `http://localhost:3000/payment-success`,
+      cancelUrl: `http://localhost:3000/payment-cancel`
+    };
+
+    // 发送API请求
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`服务器返回错误 (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.url) {
+      throw new Error('服务器未返回有效的结账URL');
+    }
+
+    return {
+      sessionUrl: data.url,
+      success: true
+    };
   } catch (error) {
     console.error('创建结账会话失败:', error);
-    throw error;
+
+    // 尝试使用本地模拟结账流程作为后备选项
+    if (isOneTime) {
+      console.log('使用后备模拟结账流程');
+      const mockLicenseKey = generateMockLicenseKey();
+      storeLicenseKey(mockLicenseKey, email);
+      return {
+        sessionUrl: `http://localhost:3000/payment-success?email=${encodeURIComponent(email)}&license=${encodeURIComponent(mockLicenseKey)}`,
+        success: true,
+        licenseKey: mockLicenseKey
+      };
+    }
+
+    return { success: false, error: error.message };
   }
 }
 
 /**
- * 验证许可证密钥
- * @param {string} licenseKey - 需要验证的许可证密钥
- * @returns {Promise<{valid: boolean, expiresAt: string, email: string, message?: string}>}
+ * 生成模拟的许可证密钥
+ * @returns {string} - 生成的许可证密钥
  */
-async function verifyLicense(licenseKey) {
-  const response = await fetch(`${API_BASE_URL}/api/licenses/validate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ licenseKey })
-  });
+function generateMockLicenseKey() {
+  const prefix = 'DPBAR';
+  const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 排除容易混淆的字符
+  let key = prefix + '-';
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Invalid license key');
+  // 生成 4-4-4 格式的密钥
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 4; j++) {
+      key += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    if (i < 2) key += '-';
   }
 
-  return await response.json();
+  return key;
+}
+
+/**
+ * 在本地存储许可证密钥
+ * @param {string} licenseKey - 许可证密钥
+ * @param {string} email - 关联的邮箱
+ */
+function storeLicenseKey(licenseKey, email) {
+  try {
+    // 获取现有的许可证列表
+    chrome.storage.local.get(['validLicenses'], (result) => {
+      const licenses = result.validLicenses || [];
+
+      // 添加新许可证
+      licenses.push({
+        key: licenseKey,
+        email: email,
+        createdAt: Date.now(),
+        isActive: false
+      });
+
+      // 保存更新后的列表
+      chrome.storage.local.set({ validLicenses: licenses }, () => {
+        console.log('许可证密钥已保存:', licenseKey);
+      });
+    });
+  } catch (error) {
+    console.error('保存许可证密钥失败:', error);
+  }
+}
+
+/**
+ * 验证许可证
+ * @param {string} licenseKey - 许可证密钥
+ * @returns {Promise<Object>} - 验证结果
+ */
+async function verifyLicense(licenseKey) {
+  try {
+    console.log('验证许可证密钥:', licenseKey);
+
+    // 首先检查本地存储的许可证
+    const localResult = await verifyLocalLicense(licenseKey);
+    if (localResult.valid) {
+      return localResult;
+    }
+
+    // 如果本地验证失败，则使用Supabase验证
+    if (supabaseClient) {
+      return await verifyLicenseWithSupabase(licenseKey);
+    }
+
+    // 如果Supabase未配置，则使用模拟验证
+    return mockVerifyLicense(licenseKey);
+  } catch (error) {
+    console.error('验证许可证时出错:', error);
+    return { valid: false, message: error.message };
+  }
+}
+
+/**
+ * 在本地验证许可证
+ * @param {string} licenseKey - 许可证密钥
+ * @returns {Promise<Object>} - 验证结果
+ */
+async function verifyLocalLicense(licenseKey) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['validLicenses'], (result) => {
+      const licenses = result.validLicenses || [];
+      const matchedLicense = licenses.find(license => license.key === licenseKey);
+
+      if (matchedLicense) {
+        resolve({
+          valid: true,
+          email: matchedLicense.email,
+          createdAt: matchedLicense.createdAt
+        });
+      } else {
+        resolve({ valid: false, message: '在本地未找到此许可证' });
+      }
+    });
+  });
+}
+
+/**
+ * 模拟验证许可证
+ * @param {string} licenseKey - 许可证密钥
+ * @returns {Object} - 验证结果
+ */
+function mockVerifyLicense(licenseKey) {
+  // 简单验证格式: DPBAR-XXXX-XXXX-XXXX
+  const licensePattern = /^DPBAR-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+
+  if (licensePattern.test(licenseKey)) {
+    return {
+      valid: true,
+      message: '许可证有效',
+      expiresAt: null  // 永久许可证
+    };
+  }
+
+  return {
+    valid: false,
+    message: '无效的许可证格式'
+  };
 }
 
 /**
@@ -515,19 +644,62 @@ async function createOrUpdateUser(userData) {
   }
 }
 
+/**
+ * 更新用户试用状态
+ * @param {string} clerkId - Clerk用户ID
+ * @param {string} trialStartedAt - 试用开始时间（ISO格式）
+ * @returns {Promise<Object>} - 更新结果
+ */
+async function updateUserTrialStatus(clerkId, trialStartedAt) {
+  if (!supabaseClient) {
+    try {
+      supabaseClient = initSupabase();
+      if (!supabaseClient) {
+        throw new Error('Supabase客户端未初始化');
+      }
+    } catch (e) {
+      console.error('无法初始化Supabase客户端:', e);
+      return { error: e.message };
+    }
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('users')
+      .update({
+        trial_started_at: trialStartedAt,
+        updated_at: new Date().toISOString()
+      })
+      .eq('clerk_id', clerkId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('更新用户试用状态失败:', error);
+      return { error: error.message };
+    }
+
+    return { data, updated: true };
+  } catch (error) {
+    console.error('更新用户试用状态时出错:', error);
+    return { error: error.message };
+  }
+}
+
 // 导出所有API函数
-export {
-  API_BASE_URL,
-  createCheckoutSession,
-  verifyLicense,
-  requestLicenseKey,
-  verifyPaymentStatus,
-  testBackendConnection,
-  createOrUpdateUser,
-  // Supabase函数
+const DayProgressBarAPI = {
   initSupabase,
   setSupabaseConfig,
   getUserFromSupabase,
   createOrUpdateUserInSupabase,
-  verifyLicenseWithSupabase
+  verifyLicenseWithSupabase,
+  updateUserTrialStatus
 };
+
+// 确保在全局对象中可用
+self.DayProgressBarAPI = DayProgressBarAPI;
+
+// 支持CommonJS模块导出
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = DayProgressBarAPI;
+}

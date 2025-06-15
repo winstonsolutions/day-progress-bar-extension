@@ -65,7 +65,7 @@ async function verifyToken(token) {
       console.log('Clerk客户端API验证失败，尝试通过自己的后端验证');
 
       // 检查是否有API_BASE_URL可用
-      const API_URL = window.API_BASE_URL || 'http://localhost';
+      const API_URL = self.API_BASE_URL || 'http://localhost';
 
       try {
         // 调用自己的后端API验证token
@@ -250,7 +250,7 @@ async function handleAuthCallback(token, user) {
       // 如果调用storeUserData失败，尝试直接调用API作为备用方案
       try {
         console.log('尝试通过备用方案直接调用API保存用户数据...');
-        const API_URL = window.API_BASE_URL || 'http://localhost';
+        const API_URL = self.API_BASE_URL || 'http://localhost';
 
         const requestData = {
           clerkId: currentUser.id,
@@ -277,6 +277,105 @@ async function handleAuthCallback(token, user) {
       } catch (backupError) {
         console.error('备用方案也失败了:', backupError);
       }
+    }
+
+    // 自动启动1小时Pro试用
+    try {
+      console.log('新用户登录，自动启动1小时Pro试用...');
+
+      // 检查用户是否已经在试用中
+      const userData = await new Promise((resolve) => {
+        chrome.storage.sync.get(['trialData'], (result) => {
+          resolve(result);
+        });
+      });
+
+      if (!userData.trialData || (userData.trialData && Date.now() > userData.trialData.startTime + (60 * 60 * 1000))) {
+        // 创建新的试用数据
+        const trialData = {
+          userId: currentUser.id,
+          email: currentUser.email,
+          startTime: Date.now(),
+          status: 'trial' // 确保与系统中使用的状态常量一致
+        };
+
+        // 保存试用数据到存储
+        await new Promise((resolve) => {
+          chrome.storage.sync.set({ trialData }, () => {
+            resolve();
+          });
+        });
+
+        console.log('已自动启动Pro试用，试用开始时间:', new Date(trialData.startTime).toLocaleString());
+
+        // 尝试同步到Supabase
+        try {
+          // 检查是否有可用的Supabase函数
+          if (typeof self.DayProgressBarAPI !== 'undefined' && typeof self.DayProgressBarAPI.createOrUpdateUserInSupabase === 'function') {
+            console.log('尝试更新Supabase中的trial_started_at字段...');
+            await self.DayProgressBarAPI.createOrUpdateUserInSupabase({
+              clerkId: currentUser.id,
+              email: currentUser.email,
+              firstName: currentUser.firstName,
+              lastName: currentUser.lastName,
+              trial_started_at: new Date().toISOString()
+            });
+            console.log('成功更新Supabase中的trial_started_at字段');
+          } else {
+            console.log('Supabase函数不可用，无法同步试用状态');
+          }
+        } catch (supabaseError) {
+          console.error('同步试用状态到Supabase失败:', supabaseError);
+        }
+
+        // 立即通知所有页面更新试用状态
+        try {
+          chrome.runtime.sendMessage({
+            action: "trial-status-updated",
+            isActive: true,
+            trialStartTime: trialData.startTime,
+            trialEndTime: trialData.startTime + (60 * 60 * 1000)
+          });
+
+          // 也将试用数据保存到userData中，确保在dashboard中能够正确显示
+          const existingUserData = await new Promise((resolve) => {
+            chrome.storage.sync.get(['userData'], (result) => {
+              resolve(result.userData || {});
+            });
+          });
+
+          chrome.storage.sync.set({
+            userData: {
+              ...existingUserData,
+              id: currentUser.id,
+              email: currentUser.email,
+              trialStartTime: trialData.startTime
+            }
+          });
+
+          console.log('试用状态已通知所有页面并保存到userData');
+        } catch (e) {
+          console.error('通知试用状态失败:', e);
+        }
+
+      } else {
+        console.log('用户已在试用期内，无需重新启动试用');
+
+        // 通知所有页面更新现有试用状态
+        try {
+          chrome.runtime.sendMessage({
+            action: "trial-status-updated",
+            isActive: true,
+            trialStartTime: userData.trialData.startTime,
+            trialEndTime: userData.trialData.startTime + (60 * 60 * 1000)
+          });
+          console.log('已通知所有页面更新现有试用状态');
+        } catch (e) {
+          console.error('通知试用状态失败:', e);
+        }
+      }
+    } catch (trialError) {
+      console.error('自动启动Pro试用失败:', trialError);
     }
 
     return currentUser;
@@ -356,7 +455,7 @@ async function signOut() {
 
     // 方法3: 调用我们自己的后端API
     try {
-      const API_URL = window.API_BASE_URL || 'http://localhost';
+      const API_URL = self.API_BASE_URL || 'http://localhost';
       await fetch(`${API_URL}/api/logout`, {
         method: 'POST',
         headers: {
@@ -395,7 +494,7 @@ async function storeUserData(userData) {
   }
 
   // 确保API_BASE_URL可用，优先使用全局window变量
-  const API_URL = window.API_BASE_URL || 'http://localhost';
+  const API_URL = self.API_BASE_URL || 'http://localhost';
 
   try {
     console.log('===== 开始存储用户数据到MongoDB =====');
@@ -460,7 +559,6 @@ async function storeUserData(userData) {
     if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
       console.error('网络请求失败，可能是CORS或网络连接问题');
       console.error('用户代理:', navigator.userAgent);
-      console.error('当前URL:', window.location.href);
       console.error('扩展ID:', chrome.runtime.id);
     }
 

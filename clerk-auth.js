@@ -597,7 +597,7 @@ async function initializeFromStorage(token, user) {
 }
 
 // Export auth functions
-export {
+const ClerkAuth = {
   initClerk,
   openSignInModal,
   getCurrentUser,
@@ -607,3 +607,6 @@ export {
   handleAuthCallback,
   initializeFromStorage
 };
+
+// Make it available globally
+self.ClerkAuth = ClerkAuth;

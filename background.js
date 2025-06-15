@@ -1,5 +1,13 @@
 // Day Progress Bar - Background Script
 
+// 添加 Supabase 配置导入
+try {
+  importScripts('supabase-config.js');
+  console.log('Supabase配置已导入到background.js');
+} catch (e) {
+  console.error('无法导入Supabase配置:', e);
+}
+
 // 声明API函数变量
 let apiModule;
 try {

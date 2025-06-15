@@ -1,9 +1,20 @@
 // Import the auth module
-import { signOut } from './clerk-auth.js';
-import SUPABASE_CONFIG from './supabase-config.js';
+// import { signOut } from './clerk-auth.js';
+// Access SUPABASE_CONFIG from global scope instead of importing
+// import SUPABASE_CONFIG from './supabase-config.js';
 
 // 当弹出界面加载时，初始化按钮状态
 document.addEventListener('DOMContentLoaded', async function() {
+  // 加载clerk-auth.js脚本
+  const clerkAuthScript = document.createElement('script');
+  clerkAuthScript.src = './clerk-auth.js';
+  document.head.appendChild(clerkAuthScript);
+
+  // 等待脚本加载完成
+  await new Promise(resolve => {
+    clerkAuthScript.onload = resolve;
+  });
+
   const toggleBtn = document.getElementById('toggle-btn');
   const signupBtn = document.getElementById('signup-btn');
   const signinBtn = document.getElementById('signin-btn');
@@ -28,6 +39,13 @@ document.addEventListener('DOMContentLoaded', async function() {
       showDebugInfo();
     });
   }
+
+  // 获取Supabase配置
+  const SUPABASE_CONFIG = window.SUPABASE_CONFIG || {
+    SUPABASE_ENABLED: false,
+    SUPABASE_URL: '',
+    SUPABASE_ANON_KEY: ''
+  };
 
   // 初始化Supabase
   if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
@@ -157,7 +175,7 @@ async function logout() {
     console.log('执行登出流程...');
 
     // 调用Clerk的signOut方法确保后端也登出
-    const signOutResult = await signOut();
+    const signOutResult = await ClerkAuth.signOut();
     console.log('Clerk signOut 结果:', signOutResult);
 
     // 清除本地存储中的认证数据

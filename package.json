@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@clerk/clerk-sdk-node": "^4.13.23"
+    "@clerk/clerk-sdk-node": "^4.13.23",
+    "@supabase/supabase-js": "^2.50.0"
   }
 }

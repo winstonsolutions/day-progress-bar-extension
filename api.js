@@ -32,15 +32,31 @@ console.log('API_BASE_URL set to global:', API_BASE_URL);
 let SUPABASE_URL = '';
 let SUPABASE_ANON_KEY = '';
 
-// 加载Supabase URL和匿名密钥
+// 尝试从全局配置获取Supabase配置
 try {
-  chrome.storage.local.get(['supabaseUrl', 'supabaseAnonKey'], function(result) {
-    SUPABASE_URL = result.supabaseUrl || '';
-    SUPABASE_ANON_KEY = result.supabaseAnonKey || '';
+  if (self.SUPABASE_CONFIG) {
+    console.log('从全局SUPABASE_CONFIG获取配置');
+    SUPABASE_URL = self.SUPABASE_CONFIG.SUPABASE_URL || '';
+    SUPABASE_ANON_KEY = self.SUPABASE_CONFIG.SUPABASE_ANON_KEY || '';
     console.log('Supabase配置已加载', { SUPABASE_URL: SUPABASE_URL ? '已配置' : '未配置' });
-  });
+  } else {
+    console.log('全局SUPABASE_CONFIG不存在，尝试从storage获取');
+  }
 } catch (e) {
-  console.error('无法加载Supabase配置:', e);
+  console.error('访问全局SUPABASE_CONFIG失败:', e);
+}
+
+// 加载Supabase URL和匿名密钥（如果全局配置不可用）
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  try {
+    chrome.storage.local.get(['supabaseUrl', 'supabaseAnonKey'], function(result) {
+      SUPABASE_URL = result.supabaseUrl || '';
+      SUPABASE_ANON_KEY = result.supabaseAnonKey || '';
+      console.log('从chrome.storage加载的Supabase配置:', { SUPABASE_URL: SUPABASE_URL ? '已配置' : '未配置' });
+    });
+  } catch (e) {
+    console.error('无法加载Supabase配置:', e);
+  }
 }
 
 // Supabase客户端对象
@@ -65,8 +81,32 @@ function initSupabase(url = null, anonKey = null) {
   try {
     // 检查是否已加载Supabase
     if (typeof supabase === 'undefined') {
-      console.error('Supabase客户端库未加载。请确保在HTML中包含了supabase-js脚本');
-      return null;
+      console.log('等待Supabase客户端库加载...');
+      // 可能需要延迟初始化，返回一个延迟初始化的Promise
+      return new Promise((resolve) => {
+        // 尝试每100ms检查一次，最多尝试10次
+        let attempts = 0;
+        const checkInterval = setInterval(() => {
+          if (typeof supabase !== 'undefined' || attempts >= 10) {
+            clearInterval(checkInterval);
+            if (typeof supabase !== 'undefined') {
+              console.log('Supabase客户端库已加载，继续初始化...');
+              const client = supabase.createClient(supabaseUrl, supabaseAnonKey);
+              console.log('Supabase客户端初始化成功');
+
+              // 存储配置到chrome.storage.local
+              chrome.storage.local.set({ supabaseUrl: supabaseUrl, supabaseAnonKey: supabaseAnonKey });
+
+              supabaseClient = client;
+              resolve(client);
+            } else {
+              console.error('Supabase客户端库加载超时');
+              resolve(null);
+            }
+          }
+          attempts++;
+        }, 100);
+      });
     }
 
     // 创建客户端

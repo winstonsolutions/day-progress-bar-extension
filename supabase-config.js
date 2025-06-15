@@ -15,5 +15,19 @@ const SUPABASE_CONFIG = {
   SUPABASE_ENABLED: true
 };
 
-// 确保在其他脚本中可以访问配置
-export default SUPABASE_CONFIG;
+// 设置为全局变量以便其他脚本访问
+self.SUPABASE_CONFIG = SUPABASE_CONFIG;
+
+// 保存到chrome.storage以便在不同上下文中访问
+try {
+  if (chrome && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.set({
+      'supabaseUrl': SUPABASE_CONFIG.SUPABASE_URL,
+      'supabaseAnonKey': SUPABASE_CONFIG.SUPABASE_ANON_KEY,
+      'supabaseEnabled': SUPABASE_CONFIG.SUPABASE_ENABLED
+    });
+    console.log('Supabase配置已保存到chrome.storage');
+  }
+} catch (err) {
+  console.warn('无法保存Supabase配置到chrome.storage:', err);
+}

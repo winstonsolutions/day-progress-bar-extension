@@ -112,10 +112,10 @@ function updateCountdownButtonVisibility() {
 
 // Redirect to backend home page instead of showing subscription prompt
 function showSubscriptionPrompt() {
-  console.log("Redirecting to backend home page for license/subscription");
+  console.log("Redirecting to backend dashboard page");
   chrome.runtime.sendMessage({
-    action: 'openSubscription',
-    url: 'http://localhost:3000'
+    action: 'redirect-to-website',
+    url: 'http://localhost:3000/dashboard'
   });
 }
 

@@ -1104,9 +1104,10 @@ setInterval(checkCountdownFeatureStatus, 60 * 60 * 1000);
 /**
  * 切换进度条的可见性
  * @param {boolean} forceHidden - true表示强制隐藏，false表示强制显示，undefined表示切换当前状态
+ * @param {boolean} skipBackgroundSync - true表示不向背景页发送消息（用于避免循环）
  * @returns {boolean} - 操作后的隐藏状态
  */
-function toggleProgressBarVisibility(forceHidden) {
+function toggleProgressBarVisibility(forceHidden, skipBackgroundSync = false) {
   const progressBarContainer = document.getElementById("day-progress-bar-container");
   if (!progressBarContainer) {
     console.log('进度条容器不存在，可能需要先创建');
@@ -1127,24 +1128,33 @@ function toggleProgressBarVisibility(forceHidden) {
     // 如果提供了明确的forceHidden参数，使用它，否则切换当前状态
     const shouldBeHidden = forceHidden !== undefined ? forceHidden : !isCurrentlyHidden;
 
+    // 如果状态没有变化，不做任何操作
+    if (shouldBeHidden === isCurrentlyHidden) {
+      console.log('进度条状态未变化，跳过操作');
+      return;
+    }
+
     console.log('切换进度条可见性:', {
       当前是否隐藏: isCurrentlyHidden,
       目标状态: shouldBeHidden ? '隐藏' : '显示',
-      强制参数: forceHidden
+      强制参数: forceHidden,
+      跳过背景同步: skipBackgroundSync
     });
 
     // 保存隐藏状态到存储 - 使用回调确保保存完成后再更新UI
     chrome.storage.sync.set({ "dayProgressBarHidden": shouldBeHidden }, function() {
       console.log('进度条隐藏状态已保存到存储:', shouldBeHidden);
 
-      // ===== 关键新增步骤：向背景页发送消息 =====
-      // 这确保了背景脚本也知道这个状态变化，从而能在新标签页中应用
-      chrome.runtime.sendMessage(
-        { action: 'updateProgressBarState', hidden: shouldBeHidden },
-        function(response) {
-          console.log('通知背景页更新进度条状态:', response);
-        }
-      );
+      // 只有在不跳过背景同步时才发送消息
+      if (!skipBackgroundSync) {
+        // 向背景页发送消息
+        chrome.runtime.sendMessage(
+          { action: 'updateProgressBarState', hidden: shouldBeHidden },
+          function(response) {
+            console.log('通知背景页更新进度条状态:', response);
+          }
+        );
+      }
 
       // 更新按钮文本
       const hideBtn = document.getElementById("day-progress-hide-btn");
@@ -1218,12 +1228,32 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
       createProgressBar();
     }
 
-    // 直接使用消息中传递的隐藏状态
-    const newHiddenState = toggleProgressBarVisibility(message.hidden);
+    // 获取进度条容器
+    const progressBarContainer = document.getElementById("day-progress-bar-container");
+    if (progressBarContainer) {
+      // 如果消息来自背景页同步，直接应用显示/隐藏状态，不触发存储更新
+      if (message.fromBackgroundSync || message.fromStorageChange) {
+        console.log('从背景页接收同步消息，直接应用状态而不触发存储更新');
+        progressBarContainer.style.display = message.hidden ? "none" : "flex";
 
-    // 立即响应，不再需要异步
-    console.log('进度条状态已更新:', newHiddenState ? '隐藏' : '显示');
-    sendResponse({success: true, hidden: newHiddenState});
+        // 更新按钮文本，如果按钮存在
+        const hideBtn = document.getElementById("day-progress-hide-btn");
+        if (hideBtn) {
+          hideBtn.textContent = message.hidden ? "Show" : "Hide";
+          // 更新点击行为
+          hideBtn.onclick = function() {
+            toggleProgressBarVisibility(!message.hidden);
+          };
+        }
+      } else {
+        // 正常的toggleProgressBar操作，使用现有的函数触发存储更新和广播
+        // 但是设置skipBackgroundSync为true，避免再次发送消息给背景页
+        toggleProgressBarVisibility(message.hidden, true);
+      }
+    }
+
+    // 立即响应
+    sendResponse({success: true});
     return true;
   }
 

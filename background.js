@@ -48,6 +48,9 @@ let currentProgressBarState = {
   hidden: false
 };
 
+// 添加一个标志，用于防止处理过程中的重复更新
+let isProcessingUpdate = false;
+
 // Check subscription status
 function checkSubscriptionStatus() {
   return new Promise(resolve => {
@@ -205,6 +208,61 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('收到消息:', message);
+
+  // 处理更新进度条状态的消息
+  if (message.action === 'updateProgressBarState') {
+    console.log('收到更新进度条状态消息:', message);
+
+    // 如果已经在处理更新，或消息来自存储变化，则跳过
+    if (isProcessingUpdate || message.fromStorageChange) {
+      console.log('跳过更新，因为', isProcessingUpdate ? '正在处理另一个更新' : '消息来自存储变化');
+      sendResponse({ success: true, skipped: true });
+      return true;
+    }
+
+    // 标记正在处理更新
+    isProcessingUpdate = true;
+
+    // 检查是否需要更新（只有当状态实际变化时才更新）
+    if (currentProgressBarState.hidden !== message.hidden) {
+      // 更新本地状态
+      updateProgressBarState(message.hidden);
+
+      // 广播到所有标签页，使用延迟确保不会阻塞
+      setTimeout(() => {
+        chrome.tabs.query({}, function(tabs) {
+          tabs.forEach(tab => {
+            // 只发送到http/https页面
+            if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+              // 不要发送到源标签页（避免循环）
+              if (!sender || sender.tab?.id !== tab.id) {
+                chrome.tabs.sendMessage(tab.id, {
+                  action: 'toggleProgressBar',
+                  hidden: message.hidden,
+                  fromBackgroundSync: true  // 标记这是来自后台的同步，避免内容脚本再次触发更新
+                }, function() {
+                  // 使用chrome.runtime.lastError检查错误
+                  if (chrome.runtime.lastError) {
+                    // 忽略错误，某些标签页可能没有内容脚本
+                    console.log(`向标签页 ${tab.id} 发送消息失败 (可忽略):`, chrome.runtime.lastError.message);
+                  }
+                });
+              }
+            }
+          });
+
+          // 处理完成后，重置标志
+          isProcessingUpdate = false;
+        });
+      }, 50);
+    } else {
+      console.log('进度条状态未变化，跳过更新');
+      isProcessingUpdate = false;
+    }
+
+    sendResponse({ success: true });
+    return true;
+  }
 
   // 处理获取用户状态的请求
   if (message.action === 'get-user-status') {
@@ -376,6 +434,42 @@ chrome.runtime.onMessageExternal.addListener(
       }
     }
 
+    // 处理新的auth-sync消息
+    if (message.action === 'auth-sync') {
+      console.log('收到auth-sync消息:', message);
+
+      if (message.data && message.data.signedIn && message.data.token) {
+        // 存储认证信息
+        chrome.storage.local.set({
+          clerkToken: message.data.token,
+          clerkUser: JSON.stringify(message.data.user || {
+            id: 'user_from_dashboard',
+            email: 'dashboard_user@example.com'
+          }),
+          authComplete: true,
+          authSyncComplete: true
+        }, () => {
+          console.log('成功通过auth-sync存储认证信息');
+
+          // 通知popup页面更新
+          chrome.runtime.sendMessage({
+            action: 'auth-state-changed',
+            isAuthenticated: true
+          }).catch(err => {
+            // 忽略错误，popup可能没有打开
+            console.log('通知popup时出现错误 (可忽略):', err);
+          });
+        });
+
+        sendResponse({ success: true });
+        return true;
+      } else {
+        console.log('auth-sync消息缺少必要数据');
+        sendResponse({ success: false, error: 'Missing required auth data' });
+        return true;
+      }
+    }
+
     return false;
   }
 );
@@ -410,6 +504,50 @@ chrome.runtime.onInstalled.addListener(() => {
 
   // Initialize subscription status if not set
   checkSubscriptionStatus();
+});
+
+// 监听存储变化，当dayProgressBarHidden状态改变时，广播到所有标签页
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync' && changes.dayProgressBarHidden) {
+    console.log('检测到进度条隐藏状态变化:', changes.dayProgressBarHidden);
+
+    // 获取新的状态
+    const newHiddenState = changes.dayProgressBarHidden.newValue;
+
+    // 只有当状态实际发生变化时才更新和广播
+    // 这可以防止无限循环
+    if (currentProgressBarState.hidden !== newHiddenState) {
+      console.log('进度条状态已改变，从', currentProgressBarState.hidden, '变为', newHiddenState);
+
+      // 更新本地状态缓存，但不触发另一个存储更新
+      currentProgressBarState.hidden = newHiddenState;
+
+      // 广播到所有标签页，但使用延迟确保不会造成死锁
+      setTimeout(() => {
+        chrome.tabs.query({}, function(tabs) {
+          tabs.forEach(tab => {
+            // 只发送到http/https页面
+            if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+              chrome.tabs.sendMessage(tab.id, {
+                action: 'toggleProgressBar',
+                hidden: newHiddenState,
+                // 添加源标识，防止接收方再次触发更新
+                fromStorageChange: true
+              }, function() {
+                // 使用chrome.runtime.lastError检查错误
+                if (chrome.runtime.lastError) {
+                  // 忽略错误，某些标签页可能没有内容脚本
+                  console.log(`向标签页 ${tab.id} 发送进度条状态变更消息失败 (可忽略):`, chrome.runtime.lastError.message);
+                }
+              });
+            }
+          });
+        });
+      }, 50); // 短暂延迟，避免阻塞主线程
+    } else {
+      console.log('进度条状态未变化，跳过广播');
+    }
+  }
 });
 
 // 获取当前用户状态

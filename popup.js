@@ -142,6 +142,24 @@ document.addEventListener('DOMContentLoaded', async function() {
       checkAuthAndUpdateUI();
     }
   });
+
+  // 监听来自background.js的认证状态变化消息
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'auth-state-changed') {
+      console.log('收到认证状态变化消息:', message);
+
+      // 收到消息后立即更新UI
+      setTimeout(() => {
+        checkAuthAndUpdateUI();
+
+        // 显示调试信息
+        if (debug) {
+          showDebugInfo();
+        }
+      }, 500);
+    }
+    return true;
+  });
 });
 
 /**

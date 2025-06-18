@@ -232,6 +232,17 @@ async function getSubscriptionData() {
 }
 
 /**
+ * 获取订阅数据的来源
+ */
+async function getSubscriptionSource() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['subscriptionSource'], (result) => {
+      resolve(result.subscriptionSource || null);
+    });
+  });
+}
+
+/**
  * 更新活动标签页
  */
 function updateActiveTab(hidden) {
@@ -347,33 +358,60 @@ function showDebugInfo() {
   debugSection.style.display = 'block';
   debugStatus.textContent = 'Loading debug info...';
 
-  chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete'], function(data) {
+  // 获取认证数据和订阅状态
+  Promise.all([
+    new Promise((resolve) => {
+      chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete'], (data) => {
+        resolve(data);
+      });
+    }),
+    new Promise((resolve) => {
+      chrome.storage.sync.get(['subscription', 'subscriptionSource'], (data) => {
+        resolve(data);
+      });
+    })
+  ]).then(([authData, subscriptionData]) => {
     let debugText = 'AUTH STATUS:\n';
 
-    if (data.clerkToken) {
-      const tokenPreview = data.clerkToken.substring(0, 10) + '...';
+    if (authData.clerkToken) {
+      const tokenPreview = authData.clerkToken.substring(0, 10) + '...';
       debugText += `- Token: ${tokenPreview}\n`;
     } else {
       debugText += '- No token found\n';
     }
 
-    if (data.clerkUser) {
-      debugText += `- User data found: ${typeof data.clerkUser}\n`;
-      if (typeof data.clerkUser === 'string') {
+    if (authData.clerkUser) {
+      debugText += `- User data found: ${typeof authData.clerkUser}\n`;
+      if (typeof authData.clerkUser === 'string') {
         try {
-          const user = JSON.parse(data.clerkUser);
+          const user = JSON.parse(authData.clerkUser);
           debugText += `- User parsed: ${user.firstName || 'No name'} (${user.email || 'No email'})\n`;
+          if (user.isPro !== undefined) {
+            debugText += `- User isPro flag: ${user.isPro}\n`;
+          }
         } catch (e) {
           debugText += `- Failed to parse user data: ${e.message}\n`;
         }
       } else {
-        debugText += `- User object: ${JSON.stringify(data.clerkUser)}\n`;
+        debugText += `- User object: ${JSON.stringify(authData.clerkUser)}\n`;
       }
     } else {
       debugText += '- No user data found\n';
     }
 
-    debugText += `- Auth complete: ${data.authComplete ? 'Yes' : 'No'}\n`;
+    debugText += `- Auth complete: ${authData.authComplete ? 'Yes' : 'No'}\n`;
+
+    // 添加订阅状态信息
+    debugText += '\nSUBSCRIPTION STATUS:\n';
+    if (subscriptionData.subscription) {
+      debugText += `- Status: ${subscriptionData.subscription.status}\n`;
+      debugText += `- Source: ${subscriptionData.subscriptionSource || 'unknown'}\n`;
+      if (subscriptionData.subscription.features) {
+        debugText += `- Features: ${JSON.stringify(subscriptionData.subscription.features)}\n`;
+      }
+    } else {
+      debugText += '- No subscription data found\n';
+    }
 
     // Add section visibility info
     debugText += '\nSECTION VISIBILITY:\n';
@@ -425,72 +463,97 @@ async function checkAuthAndUpdateUI() {
 
       console.log('用户已登录:', clerkUserObj);
 
-      // 尝试从Supabase获取用户数据
-      let supabaseUserData = null;
-      if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
-        // 使用上面已解析的clerkUserObj
-        try {
-          if (!clerkUserObj || !clerkUserObj.id) {
-            console.error('无法获取有效的clerkId:', clerkUserObj);
-            throw new Error('无效的用户ID');
-          }
-
-          console.log('准备查询Supabase用户数据，clerkId:', clerkUserObj.id);
-
-          // 通过消息获取Supabase用户数据
-          const supabaseUserResponse = await new Promise((resolve) => {
-            chrome.runtime.sendMessage(
-              { action: 'getUserFromSupabase', clerkId: clerkUserObj.id },
-              (response) => {
-                resolve(response);
-              }
-            );
-          });
-
-          if (supabaseUserResponse && supabaseUserResponse.success) {
-            supabaseUserData = supabaseUserResponse.data;
-            console.log('从Supabase获取的用户数据:', supabaseUserData);
-
-            // 如果获取到了用户数据，检查许可证状态
-            if (supabaseUserData && supabaseUserData.id) {
-              // 检查许可证状态
-              const licenseResponse = await new Promise((resolve) => {
-                chrome.runtime.sendMessage(
-                  { action: 'checkUserLicense', userId: supabaseUserData.id },
-                  (response) => {
-                    resolve(response);
-                  }
-                );
-              });
-
-              if (licenseResponse && licenseResponse.success && licenseResponse.data) {
-                console.log('找到有效许可证:', licenseResponse.data);
-
-                // 更新订阅状态
-                const licenseData = licenseResponse.data;
-                if (licenseData.isActive) {
-                  // 设置为Pro状态
-                  chrome.storage.sync.set({
-                    subscription: {
-                      status: 'pro',
-                      features: { countdown: true }
-                    },
-                    licenseData: licenseData
-                  });
-                }
-              }
-            }
-          } else {
-            console.error('获取Supabase用户数据响应错误:', supabaseUserResponse);
-          }
-        } catch (error) {
-          console.error('从Supabase获取用户数据失败:', error);
-        }
-      }
-
       // 获取订阅状态
       const subscription = await getSubscriptionData();
       console.log('用户订阅状态:', subscription);
+
+      // 声明supabaseUserData变量在更高的作用域
+      let supabaseUserData = null;
+
+      // 检查订阅来源，如果不是从NextJS同步的，再尝试从Supabase获取
+      if (!subscription || subscription.status !== 'pro') {
+        // 检查用户对象中是否包含isPro字段
+        const userIsPro = clerkUserObj.isPro === true;
+        if (userIsPro) {
+          console.log('用户对象中包含isPro=true，直接更新为Pro状态');
+          // 更新订阅状态
+          chrome.storage.sync.set({
+            subscription: {
+              status: 'pro',
+              features: { countdown: true }
+            },
+            subscriptionSource: 'user-object' // 添加来源标记，便于调试
+          });
+          // 更新本地变量以便后续使用
+          subscription.status = 'pro';
+        }
+        // 只有在既不是Pro订阅，用户对象中也没有isPro标记时，才尝试从Supabase获取
+        else if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
+          // 尝试从Supabase获取用户数据
+          try {
+            if (!clerkUserObj || !clerkUserObj.id) {
+              console.error('无法获取有效的clerkId:', clerkUserObj);
+              throw new Error('无效的用户ID');
+            }
+
+            console.log('准备查询Supabase用户数据，clerkId:', clerkUserObj.id);
+
+            // 通过消息获取Supabase用户数据
+            const supabaseUserResponse = await new Promise((resolve) => {
+              chrome.runtime.sendMessage(
+                { action: 'getUserFromSupabase', clerkId: clerkUserObj.id },
+                (response) => {
+                  resolve(response);
+                }
+              );
+            });
+
+            if (supabaseUserResponse && supabaseUserResponse.success) {
+              supabaseUserData = supabaseUserResponse.data;
+              console.log('从Supabase获取的用户数据:', supabaseUserData);
+
+              // 如果获取到了用户数据，检查许可证状态
+              if (supabaseUserData && supabaseUserData.id) {
+                // 检查许可证状态
+                const licenseResponse = await new Promise((resolve) => {
+                  chrome.runtime.sendMessage(
+                    { action: 'checkUserLicense', userId: supabaseUserData.id },
+                    (response) => {
+                      resolve(response);
+                    }
+                  );
+                });
+
+                if (licenseResponse && licenseResponse.success && licenseResponse.data) {
+                  console.log('找到有效许可证:', licenseResponse.data);
+
+                  // 更新订阅状态
+                  const licenseData = licenseResponse.data;
+                  if (licenseData.isActive) {
+                    // 设置为Pro状态
+                    chrome.storage.sync.set({
+                      subscription: {
+                        status: 'pro',
+                        features: { countdown: true }
+                      },
+                      licenseData: licenseData,
+                      subscriptionSource: 'supabase' // 添加来源标记，便于调试
+                    });
+                    // 更新本地变量以便后续使用
+                    subscription.status = 'pro';
+                  }
+                }
+              }
+            } else {
+              console.error('获取Supabase用户数据响应错误:', supabaseUserResponse);
+            }
+          } catch (error) {
+            console.error('从Supabase获取用户数据失败:', error);
+          }
+        }
+      } else {
+        console.log(`使用现有subscription状态: ${subscription.status}, 来源: ${await getSubscriptionSource() || 'unknown'}`);
+      }
 
       // 更新UI - 隐藏未登录部分，显示登录后部分
       notLoggedInSection.style.display = 'none';

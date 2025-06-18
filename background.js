@@ -541,6 +541,23 @@ chrome.runtime.onMessageExternal.addListener(
         }, () => {
           console.log('成功通过auth-sync存储认证信息');
 
+          // 直接从userData中获取isPro状态并更新subscription状态
+          const isPro = !!userData.isPro; // 确保转换为布尔值
+          console.log('从NextJS接收到的Pro状态:', isPro);
+
+          // 更新subscription状态
+          chrome.storage.sync.set({
+            subscription: {
+              status: isPro ? 'pro' : 'free',
+              features: {
+                countdown: isPro // Pro用户启用countdown功能
+              }
+            },
+            subscriptionSource: 'nextjs-sync' // 添加来源标记，便于调试
+          }, () => {
+            console.log('已根据NextJS传递的isPro字段更新subscription状态:', isPro ? 'pro' : 'free');
+          });
+
           // 同步用户数据到Supabase
           if (apiModule && typeof apiModule.getUserFromSupabase === 'function' && userData.id) {
             console.log('尝试从Supabase获取用户数据，clerkId:', userData.id);

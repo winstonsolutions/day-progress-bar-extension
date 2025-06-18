@@ -411,16 +411,36 @@ async function checkAuthAndUpdateUI() {
 
     // 检查是否有有效的Clerk用户
     if (authData.clerkUser && authData.authComplete) {
-      console.log('用户已登录:', authData.clerkUser);
+      // 确保clerkUser是对象
+      let clerkUserObj = authData.clerkUser;
+      if (typeof authData.clerkUser === 'string') {
+        try {
+          clerkUserObj = JSON.parse(authData.clerkUser);
+          console.log('已解析clerkUser字符串为对象');
+        } catch (e) {
+          console.error('解析clerkUser字符串失败:', e);
+          clerkUserObj = { id: 'unknown', email: 'unknown' };
+        }
+      }
+
+      console.log('用户已登录:', clerkUserObj);
 
       // 尝试从Supabase获取用户数据
       let supabaseUserData = null;
       if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
+        // 使用上面已解析的clerkUserObj
         try {
+          if (!clerkUserObj || !clerkUserObj.id) {
+            console.error('无法获取有效的clerkId:', clerkUserObj);
+            throw new Error('无效的用户ID');
+          }
+
+          console.log('准备查询Supabase用户数据，clerkId:', clerkUserObj.id);
+
           // 通过消息获取Supabase用户数据
           const supabaseUserResponse = await new Promise((resolve) => {
             chrome.runtime.sendMessage(
-              { action: 'getUserFromSupabase', clerkId: authData.clerkUser.id },
+              { action: 'getUserFromSupabase', clerkId: clerkUserObj.id },
               (response) => {
                 resolve(response);
               }
@@ -430,6 +450,38 @@ async function checkAuthAndUpdateUI() {
           if (supabaseUserResponse && supabaseUserResponse.success) {
             supabaseUserData = supabaseUserResponse.data;
             console.log('从Supabase获取的用户数据:', supabaseUserData);
+
+            // 如果获取到了用户数据，检查许可证状态
+            if (supabaseUserData && supabaseUserData.id) {
+              // 检查许可证状态
+              const licenseResponse = await new Promise((resolve) => {
+                chrome.runtime.sendMessage(
+                  { action: 'checkUserLicense', userId: supabaseUserData.id },
+                  (response) => {
+                    resolve(response);
+                  }
+                );
+              });
+
+              if (licenseResponse && licenseResponse.success && licenseResponse.data) {
+                console.log('找到有效许可证:', licenseResponse.data);
+
+                // 更新订阅状态
+                const licenseData = licenseResponse.data;
+                if (licenseData.isActive) {
+                  // 设置为Pro状态
+                  chrome.storage.sync.set({
+                    subscription: {
+                      status: 'pro',
+                      features: { countdown: true }
+                    },
+                    licenseData: licenseData
+                  });
+                }
+              }
+            }
+          } else {
+            console.error('获取Supabase用户数据响应错误:', supabaseUserResponse);
           }
         } catch (error) {
           console.error('从Supabase获取用户数据失败:', error);
@@ -453,11 +505,11 @@ async function checkAuthAndUpdateUI() {
         proUserSection.style.display = 'none';
 
         // 更新用户头像和名称
-        const firstName = authData.clerkUser.firstName || '';
-        const lastName = authData.clerkUser.lastName || '';
+        const firstName = clerkUserObj.firstName || '';
+        const lastName = clerkUserObj.lastName || '';
         const fullName = firstName
           ? firstName + (lastName ? ' ' + lastName : '')
-          : authData.clerkUser.emailAddresses?.[0]?.emailAddress || 'User';
+          : clerkUserObj.emailAddresses?.[0]?.emailAddress || clerkUserObj.email || 'User';
 
         if (userAvatar) {
           userAvatar.textContent = firstName ? firstName.charAt(0).toUpperCase() : 'U';
@@ -469,7 +521,7 @@ async function checkAuthAndUpdateUI() {
 
       // 更新调试信息
       if (debugStatus) {
-        debugStatus.textContent = `已登录: ${authData.clerkUser.emailAddresses?.[0]?.emailAddress || 'Unknown Email'}\n`;
+        debugStatus.textContent = `已登录: ${clerkUserObj.emailAddresses?.[0]?.emailAddress || clerkUserObj.email || 'Unknown Email'}\n`;
         debugStatus.textContent += `订阅状态: ${subscription.status}\n`;
         if (supabaseUserData) {
           debugStatus.textContent += `Supabase用户ID: ${supabaseUserData.id}`;

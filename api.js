@@ -66,7 +66,7 @@ let supabaseClient = null;
  * 初始化Supabase客户端
  * @param {string} url - Supabase项目URL
  * @param {string} anonKey - Supabase匿名公共密钥
- * @returns {Object} - Supabase客户端实例
+ * @returns {Object|Promise} - Supabase客户端实例或Promise
  */
 function initSupabase(url = null, anonKey = null) {
   // 如果没有提供参数，使用已存储的值
@@ -142,7 +142,13 @@ function setSupabaseConfig(url, anonKey) {
 async function getUserFromSupabase(clerkId) {
   if (!supabaseClient) {
     try {
-      supabaseClient = initSupabase();
+      console.log('Supabase客户端未初始化，尝试初始化...');
+      const client = await initSupabase();
+      if (!client) {
+        throw new Error('无法初始化Supabase客户端');
+      }
+      supabaseClient = client;
+      console.log('Supabase客户端初始化成功');
     } catch (e) {
       console.error('无法初始化Supabase客户端:', e);
       return null;
@@ -150,18 +156,35 @@ async function getUserFromSupabase(clerkId) {
   }
 
   try {
+    console.log('开始查询Supabase用户，clerk_id:', clerkId);
+    console.log('使用的Supabase URL:', SUPABASE_URL);
+
+    // 检查参数有效性
+    if (!clerkId || typeof clerkId !== 'string') {
+      console.error('无效的clerk_id参数:', clerkId);
+      return null;
+    }
+
     const { data, error } = await supabaseClient
       .from('users')
       .select('*')
       .eq('clerk_id', clerkId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('从Supabase获取用户数据失败:', error);
       return null;
     }
 
-    return data;
+    // 如果找到了用户，直接返回
+    if (data) {
+      console.log('成功找到Supabase用户:', data.id);
+      return data;
+    } else {
+      console.log('在Supabase中未找到用户，clerk_id:', clerkId);
+    }
+
+    return null;
   } catch (error) {
     console.error('Supabase查询失败:', error);
     return null;
@@ -180,10 +203,11 @@ async function getUserFromSupabase(clerkId) {
 async function createOrUpdateUserInSupabase(userData) {
   if (!supabaseClient) {
     try {
-      supabaseClient = initSupabase();
-      if (!supabaseClient) {
-        throw new Error('Supabase客户端未初始化');
+      const client = await initSupabase();
+      if (!client) {
+        throw new Error('无法初始化Supabase客户端');
       }
+      supabaseClient = client;
     } catch (e) {
       console.error('无法初始化Supabase客户端:', e);
       return { error: e.message };
@@ -387,10 +411,11 @@ async function createOrUpdateUser(userData) {
 async function updateUserTrialStatus(clerkId, trialStartedAt) {
   if (!supabaseClient) {
     try {
-      supabaseClient = initSupabase();
-      if (!supabaseClient) {
-        throw new Error('Supabase客户端未初始化');
+      const client = await initSupabase();
+      if (!client) {
+        throw new Error('无法初始化Supabase客户端');
       }
+      supabaseClient = client;
     } catch (e) {
       console.error('无法初始化Supabase客户端:', e);
       return { error: e.message };
@@ -420,6 +445,66 @@ async function updateUserTrialStatus(clerkId, trialStartedAt) {
   }
 }
 
+/**
+ * 检查用户是否有有效的许可证
+ * @param {string} userId - Supabase用户ID
+ * @returns {Promise<Object>} - 许可证信息，如果没有则返回null
+ */
+async function checkUserLicense(userId) {
+  if (!supabaseClient) {
+    try {
+      console.log('Supabase客户端未初始化，尝试初始化...');
+      const client = await initSupabase();
+      if (!client) {
+        throw new Error('无法初始化Supabase客户端');
+      }
+      supabaseClient = client;
+      console.log('Supabase客户端初始化成功');
+    } catch (e) {
+      console.error('无法初始化Supabase客户端:', e);
+      return null;
+    }
+  }
+
+  try {
+    console.log('开始查询用户许可证，user_id:', userId);
+
+    // 检查参数有效性
+    if (!userId || typeof userId !== 'string') {
+      console.error('无效的user_id参数:', userId);
+      return null;
+    }
+
+    const { data, error } = await supabaseClient
+      .from('licenses')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (error) {
+      console.error('从Supabase获取许可证数据失败:', error);
+      return null;
+    }
+
+    // 如果找到了许可证
+    if (data) {
+      console.log('成功找到有效许可证:', data.id);
+      return {
+        licenseKey: data.license_key,
+        isActive: data.active,
+        expiresAt: data.expires_at
+      };
+    } else {
+      console.log('未找到有效许可证，user_id:', userId);
+      return null;
+    }
+  } catch (error) {
+    console.error('Supabase许可证查询失败:', error);
+    return null;
+  }
+}
+
 // 导出所有API函数
 const DayProgressBarAPI = {
   initSupabase,
@@ -428,7 +513,8 @@ const DayProgressBarAPI = {
   createOrUpdateUserInSupabase,
   updateUserTrialStatus,
   testBackendConnection,
-  createOrUpdateUser
+  createOrUpdateUser,
+  checkUserLicense
 };
 
 // 确保在全局对象中可用

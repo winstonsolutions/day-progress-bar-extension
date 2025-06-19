@@ -46,7 +46,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   const signupBtn = document.getElementById('signup-btn');
   const signinBtn = document.getElementById('signin-btn');
   const logoutBtn = document.getElementById('logout-btn');
-  const proLogoutBtn = document.getElementById('pro-logout-btn');
   const debugSection = document.getElementById('debug-section');
 
   const notLoggedInSection = document.getElementById('not-logged-in');
@@ -144,13 +143,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   // 登出按钮点击事件
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function() {
-      signOut();
-    });
-  }
-
-  // Pro用户登出按钮
-  if (proLogoutBtn) {
-    proLogoutBtn.addEventListener('click', function() {
       signOut();
     });
   }
@@ -518,6 +510,7 @@ async function checkAuthAndUpdateUI() {
   const userAvatar = document.getElementById('user-avatar');
   const userName = document.getElementById('user-name');
   const debugStatus = document.getElementById('debug-status');
+  const logoutBtn = document.getElementById('logout-btn');
 
   console.log('检查认证状态...');
 
@@ -611,6 +604,11 @@ async function checkAuthAndUpdateUI() {
       // 更新UI - 隐藏未登录部分，显示登录后部分
       notLoggedInSection.style.display = 'none';
 
+      // 显示登出按钮（无论是什么类型的用户）
+      if (logoutBtn) {
+        logoutBtn.style.display = 'block';
+      }
+
       // 根据订阅状态决定显示免费或Pro版UI
       if (subscription.status === 'pro') {
         freeUserSection.style.display = 'none';
@@ -648,6 +646,11 @@ async function checkAuthAndUpdateUI() {
       freeUserSection.style.display = 'none';
       proUserSection.style.display = 'none';
 
+      // 隐藏登出按钮
+      if (logoutBtn) {
+        logoutBtn.style.display = 'none';
+      }
+
       // 更新调试信息
       if (debugStatus) {
         debugStatus.textContent = '未登录状态';
@@ -660,6 +663,11 @@ async function checkAuthAndUpdateUI() {
     notLoggedInSection.style.display = 'block';
     freeUserSection.style.display = 'none';
     proUserSection.style.display = 'none';
+
+    // 隐藏登出按钮
+    if (logoutBtn) {
+      logoutBtn.style.display = 'none';
+    }
 
     // 更新调试信息
     if (debugStatus) {

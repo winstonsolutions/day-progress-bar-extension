@@ -74,6 +74,10 @@
       color: #22c55e;
       cursor: pointer;
       text-decoration: none;
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
     }
     .signin-link:hover {
       text-decoration: underline;
@@ -157,6 +161,20 @@
       padding: 5px;
       border-radius: 4px;
     }
+    .signin-btn {
+      background-color: #4285F4;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+    }
+    .signin-btn:hover {
+      background-color: #3367d6;
+    }
   </style>
 </head>
 <body>
@@ -169,7 +187,7 @@
     <div id="not-logged-in" style="display: none;">
       <p class="user-promo">Sign up now to unlock 7 day free pro feature</p>
       <button id="signup-btn" class="signup-btn">Sign up</button>
-      <p class="signin-text">Already have an account? <span id="signin-btn" class="signin-link">Sign in</span></p>
+      <p class="signin-text">Already have an account? <button id="signin-btn" class="signin-btn">Sign in</button></p>
     </div>
 
     <!-- 免费用户状态 -->

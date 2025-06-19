@@ -140,50 +140,11 @@ async function updateUserTrialStatus(userId, trialStartedAt) {
   }
 }
 
-/**
- * 检查用户许可状态
- * @param {string} userId - 用户ID
- * @returns {Promise<Object>} - 许可状态
- */
-async function checkUserLicense(userId) {
-  try {
-    // 尝试与本地后端通信
-    const response = await fetch(`${API_BASE_URL}/api/users/${userId}/license`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`后端响应异常: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('用户许可状态检查成功:', data);
-    return { data, source: 'local_backend' };
-  } catch (error) {
-    console.error('无法检查用户许可状态，使用模拟数据:', error);
-
-    // 返回模拟数据 - 假设所有用户都有有效的许可
-    return {
-      data: {
-        id: userId,
-        license_valid: true,
-        license_type: 'pro', // 或者 'trial'
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30天后
-      },
-      source: 'mock'
-    };
-  }
-}
-
 // 导出API函数
 self.DayProgressBarAPI = {
   testBackendConnection,
   createOrUpdateUser,
-  updateUserTrialStatus,
-  checkUserLicense
+  updateUserTrialStatus
 };
 
 // 确保在全局对象中可用

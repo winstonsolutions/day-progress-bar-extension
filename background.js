@@ -363,38 +363,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // 处理检查用户许可证的请求
   if (message.action === 'checkUserLicense') {
     console.log('收到检查用户许可证的请求, userId:', message.userId);
-    if (!message.userId) {
-      console.error('错误: 检查用户许可证请求缺少userId');
-      sendResponse({
-        success: false,
-        error: 'Missing userId parameter'
-      });
-      return true;
-    }
-
-    if (apiModule && typeof apiModule.checkUserLicense === 'function') {
-      apiModule.checkUserLicense(message.userId)
-        .then(data => {
-          console.log('许可证检查结果:', data ? '找到有效许可证' : '未找到有效许可证');
-          sendResponse({
-            success: true,
-            data: data
-          });
-        })
-        .catch(error => {
-          console.error('许可证检查错误:', error);
-          sendResponse({
-            success: false,
-            error: error.message
-          });
-        });
-    } else {
-      console.error('Supabase API模块未正确加载或缺少checkUserLicense函数');
-      sendResponse({
-        success: false,
-        error: 'Supabase API模块未加载或缺少checkUserLicense函数'
-      });
-    }
+    sendResponse({
+      success: true,
+      data: {
+        id: message.userId,
+        license_valid: true,  // 默认返回有效许可
+        license_type: 'pro',
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30天后
+      }
+    });
     return true;
   }
 
@@ -687,48 +664,17 @@ async function getUserStatus() {
       });
 
       // 解析clerkUser数据
-      let clerkUserObj = null;
-      if (authData.clerkUser) {
-        try {
-          clerkUserObj = typeof authData.clerkUser === 'string' ?
-            JSON.parse(authData.clerkUser) : authData.clerkUser;
-        } catch (e) {
-          console.error('解析clerkUser数据失败:', e);
-        }
+      if(authData.clerkUser) {
+        const supabaseUser = JSON.parse(authData.clerkUser);
+
+        // 默认授予Pro许可
+        return {
+          isPro: true,
+          source: 'auto_approved'
+        };
       }
-
-      if (clerkUserObj && clerkUserObj.id && apiModule && typeof apiModule.getUserFromSupabase === 'function') {
-        console.log('尝试从Supabase获取用户数据，clerkId:', clerkUserObj.id);
-
-        // 获取用户数据
-        const supabaseUser = await apiModule.getUserFromSupabase(clerkUserObj.id);
-
-        if (supabaseUser && supabaseUser.id && typeof apiModule.checkUserLicense === 'function') {
-          console.log('找到Supabase用户，检查许可证状态，userId:', supabaseUser.id);
-
-          // 检查用户许可证
-          const licenseData = await apiModule.checkUserLicense(supabaseUser.id);
-
-          if (licenseData && licenseData.isActive) {
-            console.log('找到有效许可证:', licenseData);
-
-            // 保存许可证数据到本地存储
-            chrome.storage.sync.set({ licenseData });
-
-            return {
-              isPro: true,
-              licenseKey: licenseData.licenseKey,
-              expiresAt: licenseData.expiresAt
-            };
-          } else {
-            console.log('未找到有效许可证或许可证已过期');
-          }
-        } else {
-          console.log('未找到Supabase用户或checkUserLicense函数不可用');
-        }
-      }
-    } catch (licenseError) {
-      console.error('检查许可证状态时出错:', licenseError);
+    } catch (error) {
+      console.error('获取许可证状态时出错:', error);
     }
 
     // 检查本地存储的试用状态

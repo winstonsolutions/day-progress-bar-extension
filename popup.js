@@ -42,9 +42,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   // 设置开关按钮状态
   loadToggleButtonState();
 
-  // 测试API连接
-  testApiConnection();
-
   const toggleBtn = document.getElementById('toggle-btn');
   const signupBtn = document.getElementById('signup-btn');
   const signinBtn = document.getElementById('signin-btn');
@@ -656,38 +653,6 @@ async function checkAuthAndUpdateUI() {
   }
 }
 
-// 测试API连接
-async function testApiConnection() {
-  try {
-    // 从API获取状态信息
-    const apiStatus = await new Promise(resolve => {
-      chrome.runtime.sendMessage({ action: 'testBackendConnection' }, response => {
-        resolve(response);
-      });
-    });
-
-    console.log('API连接测试结果:', apiStatus);
-
-    // 显示结果
-    const debugStatus = document.getElementById('debug-status');
-    if (debugStatus) {
-      debugStatus.textContent += '\nAPI: ' + (apiStatus.success ? '已连接' : '连接失败');
-
-      // 如果有详细的API状态信息
-      if (apiStatus.data) {
-        debugStatus.textContent += `\nAPI版本: ${apiStatus.data.version || '未知'}`;
-      }
-    }
-  } catch (error) {
-    console.error('API连接测试出错:', error);
-
-    const debugStatus = document.getElementById('debug-status');
-    if (debugStatus) {
-      debugStatus.textContent += '\nAPI错误: ' + error.message;
-    }
-  }
-}
-
 // 检查并显示订阅状态
 async function checkSubscriptionStatus() {
   try {
@@ -1095,22 +1060,18 @@ function loadSettings() {
   try {
     console.log('加载工作时间设置...');
 
-    // 获取开始时间和结束时间输入框
-    const startTimeInput = document.getElementById('start-time');
-    const endTimeInput = document.getElementById('end-time');
-
-    if (!startTimeInput || !endTimeInput) {
-      console.warn('未找到时间设置输入框');
-      return;
-    }
-
     // 从存储中获取设置
     chrome.storage.sync.get(['startTime', 'endTime', 'countdownDuration'], function(result) {
-      if (result.startTime) {
+      // 获取开始时间和结束时间输入框
+      const startTimeInput = document.getElementById('start-time');
+      const endTimeInput = document.getElementById('end-time');
+
+      // 如果输入框存在则设置值
+      if (startTimeInput && result.startTime) {
         startTimeInput.value = result.startTime;
         console.log('已加载开始时间:', result.startTime);
       }
-      if (result.endTime) {
+      if (endTimeInput && result.endTime) {
         endTimeInput.value = result.endTime;
         console.log('已加载结束时间:', result.endTime);
       }

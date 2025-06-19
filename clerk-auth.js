@@ -359,7 +359,8 @@ function isAuthenticated() {
 }
 
 /**
- * Sign out current user
+ * Sign out the current user
+ * @returns {Promise<boolean>} Whether sign out was successful
  */
 async function signOut() {
   try {
@@ -371,15 +372,16 @@ async function signOut() {
       return true;
     }
 
-    // 方法1: 调用Clerk的signOut API端点
+    // 获取扩展ID和重定向URL
+    const extensionId = chrome.runtime.id;
+
+    // 设置重定向到Next.js首页
+    const redirectUrl = `http://localhost:3000/`;  // Next.js应用首页URL
+
+    // 1. 调用Clerk的signOut API端点
     try {
-      console.log('尝试调用Clerk API登出...');
+      console.log('调用Clerk API登出...');
 
-      // 使用重定向URL打开Clerk的登出页面
-      const extensionId = chrome.runtime.id;
-      const redirectUrl = `chrome-extension://${extensionId}/popup.html`;
-
-      // 首先尝试直接调用API
       const response = await fetch(`${CLERK_BASE_URL}/v1/client/sign-outs`, {
         method: 'POST',
         headers: {
@@ -393,38 +395,18 @@ async function signOut() {
 
       console.log('Clerk登出API响应:', response.status);
 
-      // 方法2: 如果API调用失败，尝试在新标签页中打开Clerk的登出URL
-      if (!response.ok) {
-        console.log('API登出失败，尝试打开登出URL');
-        const signOutUrl = `${CLERK_BASE_URL}/sign-out?redirect_url=${encodeURIComponent(redirectUrl)}`;
+      // 2. 打开一个新标签页到Clerk的登出URL
+      // 这样会触发session.removed webhook事件
+      const signOutUrl = `${CLERK_BASE_URL}/sign-out?redirect_url=${encodeURIComponent(redirectUrl)}`;
 
-        // 打开登出页面后立即关闭，用户不会看到这个过程
-        chrome.tabs.create({ url: signOutUrl, active: false }, (tab) => {
-          // 等待1秒后关闭标签页，确保请求有足够时间完成
-          setTimeout(() => {
-            chrome.tabs.remove(tab.id);
-          }, 1000);
-        });
-      }
+      // 打开登出页面到Next.js应用，并保持页面打开
+      chrome.tabs.create({ url: signOutUrl, active: true });
+      console.log('已打开登出页面，将重定向到:', redirectUrl);
     } catch (apiError) {
       console.error('调用Clerk API登出失败:', apiError);
     }
 
-    // 方法3: 调用我们自己的后端API
-    try {
-      const API_URL = self.API_BASE_URL || 'http://localhost';
-      await fetch(`${API_URL}/api/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${clerkToken}`
-        }
-      });
-    } catch (backendError) {
-      console.log('调用后端登出API失败，忽略此错误', backendError);
-    }
-
-    // 清除本地数据
+    // 3. 清除本地数据
     currentUser = null;
     clerkToken = null;
 

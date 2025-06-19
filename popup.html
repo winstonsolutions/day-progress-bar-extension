@@ -41,6 +41,7 @@
       cursor: pointer;
       text-align: center;
       transition: background-color 0.2s;
+      width: 100%;
     }
     .show-hide-btn:hover {
       background-color: #3367d6;
@@ -51,19 +52,41 @@
       line-height: 1.4;
       margin: 0;
     }
+    .button-container {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+    }
     .signup-btn {
-      background-color: #22c55e;
+      background-color: #4285F4;
       color: white;
-      padding: 12px 20px;
+      padding: 12px 0;
       border: none;
       border-radius: 5px;
       font-size: 16px;
       font-weight: 500;
       cursor: pointer;
       text-align: center;
+      flex: 1;
     }
     .signup-btn:hover {
-      background-color: #16a34a;
+      background-color: #3367d6;
+    }
+    .signin-btn {
+      background-color: transparent;
+      color: #333;
+      padding: 12px 0;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      flex: 1;
+    }
+    .signin-btn:hover {
+      background-color: #f5f5f5;
     }
     .signin-text {
       text-align: center;
@@ -125,22 +148,20 @@
       font-size: 16px;
     }
     .logout-btn {
-      background-color: #e5e7eb;
+      background-color: #f1f3f4;
       color: #111827;
-      padding: 12px 20px;
+      padding: 15px 20px;
       border: none;
-      border-radius: 5px;
+      border-radius: 4px;
       font-size: 16px;
       font-weight: 500;
       cursor: pointer;
       text-align: center;
-      margin-top: 10px;
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
+      width: 100%;
+      margin: 0;
     }
     .logout-btn:hover {
-      background-color: #d1d5db;
+      background-color: #e5e7eb;
     }
     #not-logged-in, #free-user, #pro-user {
       display: none;
@@ -164,20 +185,6 @@
       padding: 5px;
       border-radius: 4px;
     }
-    .signin-btn {
-      background-color: #4285F4;
-      color: white;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 5px;
-      font-size: 16px;
-      font-weight: 500;
-      cursor: pointer;
-      text-align: center;
-    }
-    .signin-btn:hover {
-      background-color: #3367d6;
-    }
   </style>
 </head>
 <body>
@@ -189,8 +196,11 @@
     <!-- 未登录状态 -->
     <div id="not-logged-in" style="display: none;">
       <p class="user-promo">Sign up now to unlock 7 day free pro feature</p>
-      <button id="signup-btn" class="signup-btn">Sign up</button>
-      <p class="signin-text">Already have an account? <button id="signin-btn" class="signin-btn">Sign in</button></p>
+
+      <div class="button-container">
+        <button id="signup-btn" class="signup-btn">Sign up</button>
+        <button id="signin-btn" class="signin-btn">Sign in</button>
+      </div>
     </div>
 
     <!-- 免费用户状态 -->

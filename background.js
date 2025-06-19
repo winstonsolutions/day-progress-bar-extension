@@ -96,18 +96,15 @@ function updateProgressBarState(hidden) {
 
 // Check if a specific feature is enabled
 async function isFeatureEnabled(featureName) {
-  // 检查用户是否已经登录
-  const isLoggedIn = await checkUserLoginStatus();
-
-  // 如果是倒计时功能且用户已登录，直接启用
-  if (featureName === 'countdown' && isLoggedIn) {
-    console.log('用户已登录，自动启用倒计时功能');
-    return true;
-  }
-
-  // 如原来的逻辑一样检查订阅数据
+  // 获取订阅状态
   const subscription = await checkSubscriptionStatus();
-  return subscription.features && subscription.features[featureName] === true;
+
+  // 检查特定功能是否已启用
+  const isEnabled = subscription.features && subscription.features[featureName] === true;
+
+  console.log(`功能 ${featureName} 检查结果:`, isEnabled ? '已启用' : '未启用', '订阅状态:', subscription.status);
+
+  return isEnabled;
 }
 
 // 检查用户是否已登录
@@ -202,6 +199,23 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('收到消息:', message);
+
+  // 处理功能检查请求
+  if (message.action === 'checkFeature') {
+    console.log('收到功能检查请求:', message.feature);
+
+    isFeatureEnabled(message.feature)
+      .then(enabled => {
+        console.log(`功能 ${message.feature} 是否启用:`, enabled);
+        sendResponse({ enabled: enabled });
+      })
+      .catch(error => {
+        console.error(`检查功能 ${message.feature} 时出错:`, error);
+        sendResponse({ enabled: false, error: error.message });
+      });
+
+    return true; // 异步响应
+  }
 
   // 处理更新进度条状态的消息
   if (message.action === 'updateProgressBarState') {

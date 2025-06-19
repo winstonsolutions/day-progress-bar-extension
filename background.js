@@ -367,9 +367,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       success: true,
       data: {
         id: message.userId,
-        license_valid: true,  // 默认返回有效许可
-        license_type: 'pro',
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30天后
+        license_valid: false,  // 将默认值改为false，除非确认用户有Pro许可
+        license_type: 'free',
+        expires_at: null
       }
     });
     return true;

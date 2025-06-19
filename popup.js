@@ -257,11 +257,16 @@ function signOut() {
         .then(success => {
           if (success) {
             console.log('登出成功');
-            // 清除本地存储中的认证数据
+            // 清除本地存储中的认证数据和订阅数据
             chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
               console.log('已清除本地认证数据');
-              // 刷新UI显示未登录状态
-              checkAuthAndUpdateUI();
+
+              // 同时清除订阅数据
+              chrome.storage.sync.remove(['subscription', 'subscriptionSource'], function() {
+                console.log('已清除订阅数据');
+                // 刷新UI显示未登录状态
+                checkAuthAndUpdateUI();
+              });
             });
           } else {
             console.log('登出失败');
@@ -274,8 +279,13 @@ function signOut() {
       // 如果ClerkAuth未加载，直接清除本地存储
       chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
         console.log('已清除本地认证数据');
-        // 刷新UI显示未登录状态
-        checkAuthAndUpdateUI();
+
+        // 同时清除订阅数据
+        chrome.storage.sync.remove(['subscription', 'subscriptionSource'], function() {
+          console.log('已清除订阅数据');
+          // 刷新UI显示未登录状态
+          checkAuthAndUpdateUI();
+        });
       });
     }
   } catch (error) {
@@ -284,7 +294,12 @@ function signOut() {
     // 出错时尝试直接清除本地存储
     chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
       console.log('已清除本地认证数据（错误处理）');
-      checkAuthAndUpdateUI();
+
+      // 同时清除订阅数据
+      chrome.storage.sync.remove(['subscription', 'subscriptionSource'], function() {
+        console.log('已清除订阅数据（错误处理）');
+        checkAuthAndUpdateUI();
+      });
     });
   }
 }
@@ -562,14 +577,14 @@ async function checkAuthAndUpdateUI() {
           chrome.runtime.sendMessage(
             { action: 'checkUserLicense', userId: clerkUserObj.id },
             function(response) {
-              if (response && response.data && response.data.license_valid) {
+              if (response && response.data && response.data.license_valid === true && response.data.license_type === 'pro') {
                 console.log('API许可检查成功:', response.data);
 
                 // 设置订阅状态
                 const subscriptionInfo = {
-                  status: 'active',
+                  status: response.data.license_type === 'pro' ? 'active' : 'free',
                   features: {
-                    countdown: true
+                    countdown: response.data.license_type === 'pro'
                   }
                 };
 

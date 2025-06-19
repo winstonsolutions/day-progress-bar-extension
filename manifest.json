@@ -38,14 +38,13 @@
     "https://*.accounts.dev/",
     "https://accounts.dev/",
     "https://api.clerk.dev/",
-    "http://localhost:3000/*",
-    "https://*.supabase.co/*"
+    "http://localhost:3000/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://*.accounts.dev https://api.clerk.dev https://*.supabase.co http://localhost"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://*.accounts.dev https://api.clerk.dev http://localhost"
   },
   "oauth2": {
     "client_id": "${966163827588-v9k3ht1k0a9acbsgt26n831lda9he8qm.apps.googleusercontent.com}",
@@ -54,8 +53,7 @@
   "externally_connectable": {
     "matches": [
       "https://*.accounts.dev/*",
-      "http://localhost:3000/*",
-      "https://*.supabase.co/*"
+      "http://localhost:3000/*"
     ],
     "accepts_tls_channel_id": false
   },

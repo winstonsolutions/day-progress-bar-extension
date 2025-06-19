@@ -1,6 +1,7 @@
-// Import the auth module
-// import { signOut } from './clerk-auth.js';
-// Access SUPABASE_CONFIG from global scope instead of importing
+/**
+ * Day Progress Bar Extension Popup UI Controller
+ */
+// 移除Supabase配置导入
 // import SUPABASE_CONFIG from './supabase-config.js';
 
 // 当弹出界面加载时，初始化按钮状态
@@ -15,13 +16,41 @@ document.addEventListener('DOMContentLoaded', async function() {
     clerkAuthScript.onload = resolve;
   });
 
+  // Debug状态显示区域
+  const debugStatus = document.getElementById("debug-status");
+  if (debugStatus) {
+    // 显示扩展版本信息
+    const manifest = chrome.runtime.getManifest();
+    debugStatus.textContent = `版本: ${manifest.version}`;
+  }
+
+  // 检查登录状态并相应更新UI
+  checkUserLoginStatus();
+
+  // 初始化工作时间设置
+  loadSettings();
+
+  // 添加事件监听器
+  attachEventListeners();
+
+  // 监听来自background.js的消息
+  chrome.runtime.onMessage.addListener(handleRuntimeMessages);
+
+  // 检查并显示订阅状态
+  checkSubscriptionStatus();
+
+  // 设置开关按钮状态
+  loadToggleButtonState();
+
+  // 测试API连接
+  testApiConnection();
+
   const toggleBtn = document.getElementById('toggle-btn');
   const signupBtn = document.getElementById('signup-btn');
   const signinBtn = document.getElementById('signin-btn');
   const logoutBtn = document.getElementById('logout-btn');
   const proLogoutBtn = document.getElementById('pro-logout-btn');
   const debugSection = document.getElementById('debug-section');
-  const debugStatus = document.getElementById('debug-status');
 
   const notLoggedInSection = document.getElementById('not-logged-in');
   const freeUserSection = document.getElementById('free-user');
@@ -32,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (debug) {
     debugSection.style.display = 'block';
-    debugStatus.textContent = 'Initializing...';
+    if (debugStatus) debugStatus.textContent = 'Initializing...';
 
     // 添加双击标题以显示调试信息
     document.querySelector('h1').addEventListener('dblclick', function() {
@@ -40,42 +69,42 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   }
 
-  // 获取Supabase配置
-  const SUPABASE_CONFIG = window.SUPABASE_CONFIG || {
-    SUPABASE_ENABLED: false,
-    SUPABASE_URL: '',
-    SUPABASE_ANON_KEY: ''
-  };
+  // 获取页面上的元素
+  const startTimeInput = document.getElementById('start-time');
+  const endTimeInput = document.getElementById('end-time');
+  const saveSettingsBtn = document.getElementById('save-settings');
+  const countdownInput = document.getElementById('countdown-minutes');
+  const startCountdownBtn = document.getElementById('start-countdown');
+  const hideProgressBarBtn = document.getElementById('hide-progress-bar');
 
-  // 初始化Supabase
-  if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
-    try {
-      // 在popup中，我们需要通过消息与background script通信
-      chrome.runtime.sendMessage(
-        { action: 'initSupabase', url: SUPABASE_CONFIG.SUPABASE_URL, anonKey: SUPABASE_CONFIG.SUPABASE_ANON_KEY },
-        function(response) {
-          if (response && response.success) {
-            console.log('Supabase初始化成功');
-            if (debug) {
-              debugStatus.textContent += '\nSupabase: 已连接';
-            }
-          } else {
-            console.error('Supabase初始化失败');
-            if (debug) {
-              debugStatus.textContent += '\nSupabase: 连接失败';
-            }
-          }
-        }
-      );
-    } catch (error) {
-      console.error('Supabase初始化错误:', error);
-      if (debug) {
-        debugStatus.textContent += '\nSupabase错误: ' + error.message;
-      }
-    }
+  // 登录按钮事件
+  const signInBtn = document.getElementById('sign-in-btn');
+  if (signInBtn) {
+    signInBtn.addEventListener('click', function() {
+      showClerkSignIn();
+    });
   }
 
-  // 检查认证状态
+  // 退出登录按钮事件
+  const signOutBtn = document.getElementById('sign-out-btn');
+  if (signOutBtn) {
+    signOutBtn.addEventListener('click', function() {
+      signOut();
+    });
+  }
+
+  // 调试按钮
+  const debugBtn = document.getElementById('debug-btn');
+  if (debugBtn) {
+    debugBtn.addEventListener('click', function() {
+      const debugContainer = document.getElementById('debug-container');
+      if (debugContainer) {
+        debugContainer.classList.toggle('hidden');
+      }
+    });
+  }
+
+  // 检查认证状态 - 修复为正确的函数名
   checkAuthAndUpdateUI();
 
   // 获取当前进度条隐藏状态
@@ -118,14 +147,14 @@ document.addEventListener('DOMContentLoaded', async function() {
   // 登出按钮点击事件
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function() {
-      logout();
+      signOut();
     });
   }
 
   // Pro用户登出按钮
   if (proLogoutBtn) {
     proLogoutBtn.addEventListener('click', function() {
-      logout();
+      signOut();
     });
   }
 
@@ -186,37 +215,80 @@ function openAuthPage(page = 'sign-in') {
 }
 
 /**
+ * 显示Clerk登录界面
+ */
+function showClerkSignIn() {
+  try {
+    console.log('打开Clerk登录界面...');
+
+    // 检查是否已经加载了ClerkAuth
+    if (typeof ClerkAuth !== 'undefined' && ClerkAuth.openSignInModal) {
+      ClerkAuth.openSignInModal('sign-in')
+        .then(user => {
+          if (user) {
+            console.log('用户登录成功:', user);
+            checkAuthAndUpdateUI();
+          } else {
+            console.log('用户取消登录或登录失败');
+          }
+        })
+        .catch(error => {
+          console.error('登录过程中出错:', error);
+        });
+    } else {
+      // 如果ClerkAuth未加载，使用openAuthPage
+      openAuthPage('sign-in');
+    }
+  } catch (error) {
+    console.error('显示登录界面时出错:', error);
+
+    // 失败时回退到openAuthPage
+    openAuthPage('sign-in');
+  }
+}
+
+/**
  * 退出登录
  */
-async function logout() {
+function signOut() {
   try {
     console.log('执行登出流程...');
 
-    // 调用Clerk的signOut方法确保后端也登出
-    const signOutResult = await ClerkAuth.signOut();
-    console.log('Clerk signOut 结果:', signOutResult);
-
-    // 清除本地存储中的认证数据
-    chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
-      console.log('已清除本地认证数据');
-
-      // 刷新UI显示未登录状态
-      checkAuthAndUpdateUI();
-
-      // 可选：向后端发送登出事件
-      try {
-        const API_URL = 'http://localhost'; // 直接使用默认值
-        fetch(`${API_URL}/api/logout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        }).catch(e => console.log('通知后端登出可选步骤失败，忽略此错误:', e));
-      } catch (e) {
-        console.log('通知后端登出失败，但这是可选步骤:', e);
-      }
-    });
+    // 检查是否已经加载了ClerkAuth
+    if (typeof ClerkAuth !== 'undefined' && ClerkAuth.signOut) {
+      ClerkAuth.signOut()
+        .then(success => {
+          if (success) {
+            console.log('登出成功');
+            // 清除本地存储中的认证数据
+            chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
+              console.log('已清除本地认证数据');
+              // 刷新UI显示未登录状态
+              checkAuthAndUpdateUI();
+            });
+          } else {
+            console.log('登出失败');
+          }
+        })
+        .catch(error => {
+          console.error('登出过程中出错:', error);
+        });
+    } else {
+      // 如果ClerkAuth未加载，直接清除本地存储
+      chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
+        console.log('已清除本地认证数据');
+        // 刷新UI显示未登录状态
+        checkAuthAndUpdateUI();
+      });
+    }
   } catch (error) {
     console.error('登出过程中出错:', error);
-    alert('登出失败，请重试');
+
+    // 出错时尝试直接清除本地存储
+    chrome.storage.local.remove(['clerkToken', 'clerkUser', 'authComplete'], function() {
+      console.log('已清除本地认证数据（错误处理）');
+      checkAuthAndUpdateUI();
+    });
   }
 }
 
@@ -467,10 +539,7 @@ async function checkAuthAndUpdateUI() {
       const subscription = await getSubscriptionData();
       console.log('用户订阅状态:', subscription);
 
-      // 声明supabaseUserData变量在更高的作用域
-      let supabaseUserData = null;
-
-      // 检查订阅来源，如果不是从NextJS同步的，再尝试从Supabase获取
+      // 检查订阅来源和用户状态
       if (!subscription || subscription.status !== 'pro') {
         // 检查用户对象中是否包含isPro字段
         const userIsPro = clerkUserObj.isPro === true;
@@ -487,69 +556,41 @@ async function checkAuthAndUpdateUI() {
           // 更新本地变量以便后续使用
           subscription.status = 'pro';
         }
-        // 只有在既不是Pro订阅，用户对象中也没有isPro标记时，才尝试从Supabase获取
-        else if (SUPABASE_CONFIG.SUPABASE_ENABLED) {
-          // 尝试从Supabase获取用户数据
-          try {
-            if (!clerkUserObj || !clerkUserObj.id) {
-              console.error('无法获取有效的clerkId:', clerkUserObj);
-              throw new Error('无效的用户ID');
-            }
+        // 只有在既不是Pro订阅，用户对象中也没有isPro标记时，才尝试从本地后端API获取
+        else {
+          // 尝试从本地API获取用户数据
+          console.log('尝试从本地API获取用户许可状态');
 
-            console.log('准备查询Supabase用户数据，clerkId:', clerkUserObj.id);
+          // 许可检查API调用
+          chrome.runtime.sendMessage(
+            { action: 'checkUserLicense', userId: clerkUserObj.id },
+            function(response) {
+              if (response && response.data && response.data.license_valid) {
+                console.log('API许可检查成功:', response.data);
 
-            // 通过消息获取Supabase用户数据
-            const supabaseUserResponse = await new Promise((resolve) => {
-              chrome.runtime.sendMessage(
-                { action: 'getUserFromSupabase', clerkId: clerkUserObj.id },
-                (response) => {
-                  resolve(response);
-                }
-              );
-            });
-
-            if (supabaseUserResponse && supabaseUserResponse.success) {
-              supabaseUserData = supabaseUserResponse.data;
-              console.log('从Supabase获取的用户数据:', supabaseUserData);
-
-              // 如果获取到了用户数据，检查许可证状态
-              if (supabaseUserData && supabaseUserData.id) {
-                // 检查许可证状态
-                const licenseResponse = await new Promise((resolve) => {
-                  chrome.runtime.sendMessage(
-                    { action: 'checkUserLicense', userId: supabaseUserData.id },
-                    (response) => {
-                      resolve(response);
-                    }
-                  );
-                });
-
-                if (licenseResponse && licenseResponse.success && licenseResponse.data) {
-                  console.log('找到有效许可证:', licenseResponse.data);
-
-                  // 更新订阅状态
-                  const licenseData = licenseResponse.data;
-                  if (licenseData.isActive) {
-                    // 设置为Pro状态
-                    chrome.storage.sync.set({
-                      subscription: {
-                        status: 'pro',
-                        features: { countdown: true }
-                      },
-                      licenseData: licenseData,
-                      subscriptionSource: 'supabase' // 添加来源标记，便于调试
-                    });
-                    // 更新本地变量以便后续使用
-                    subscription.status = 'pro';
+                // 设置订阅状态
+                const subscriptionInfo = {
+                  status: 'active',
+                  features: {
+                    countdown: true
                   }
-                }
+                };
+
+                // 保存到存储
+                chrome.storage.sync.set({
+                  subscription: subscriptionInfo,
+                  subscriptionSource: 'api'
+                }, function() {
+                  console.log('从API保存的订阅信息:', subscriptionInfo);
+                  updateSubscriptionUI(subscriptionInfo);
+                });
+              } else {
+                console.log('API许可无效或检查失败:', response);
+                // 回退到试用检查
+                checkTrialStatus();
               }
-            } else {
-              console.error('获取Supabase用户数据响应错误:', supabaseUserResponse);
             }
-          } catch (error) {
-            console.error('从Supabase获取用户数据失败:', error);
-          }
+          );
         }
       } else {
         console.log(`使用现有subscription状态: ${subscription.status}, 来源: ${await getSubscriptionSource() || 'unknown'}`);
@@ -586,9 +627,6 @@ async function checkAuthAndUpdateUI() {
       if (debugStatus) {
         debugStatus.textContent = `已登录: ${clerkUserObj.emailAddresses?.[0]?.emailAddress || clerkUserObj.email || 'Unknown Email'}\n`;
         debugStatus.textContent += `订阅状态: ${subscription.status}\n`;
-        if (supabaseUserData) {
-          debugStatus.textContent += `Supabase用户ID: ${supabaseUserData.id}`;
-        }
       }
     } else {
       console.log('用户未登录');
@@ -616,4 +654,723 @@ async function checkAuthAndUpdateUI() {
       debugStatus.textContent = `认证检查错误: ${error.message}`;
     }
   }
+}
+
+// 测试API连接
+async function testApiConnection() {
+  try {
+    // 从API获取状态信息
+    const apiStatus = await new Promise(resolve => {
+      chrome.runtime.sendMessage({ action: 'testBackendConnection' }, response => {
+        resolve(response);
+      });
+    });
+
+    console.log('API连接测试结果:', apiStatus);
+
+    // 显示结果
+    const debugStatus = document.getElementById('debug-status');
+    if (debugStatus) {
+      debugStatus.textContent += '\nAPI: ' + (apiStatus.success ? '已连接' : '连接失败');
+
+      // 如果有详细的API状态信息
+      if (apiStatus.data) {
+        debugStatus.textContent += `\nAPI版本: ${apiStatus.data.version || '未知'}`;
+      }
+    }
+  } catch (error) {
+    console.error('API连接测试出错:', error);
+
+    const debugStatus = document.getElementById('debug-status');
+    if (debugStatus) {
+      debugStatus.textContent += '\nAPI错误: ' + error.message;
+    }
+  }
+}
+
+// 检查并显示订阅状态
+async function checkSubscriptionStatus() {
+  try {
+    // 获取订阅状态元素
+    const subscriptionStatus = document.getElementById('subscription-status');
+    if (!subscriptionStatus) return;
+
+    // 从chrome.storage.local获取用户登录数据
+    chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete'], async (data) => {
+      // 如果用户未登录，显示登录提示
+      if (!data.authComplete || !data.clerkUser) {
+        console.log('用户未登录，显示登录提示');
+        subscriptionStatus.textContent = '未登录';
+        subscriptionStatus.style.color = '#888';
+
+        // 显示登录提示区域
+        const loginPrompt = document.getElementById('login-prompt');
+        if (loginPrompt) {
+          loginPrompt.classList.remove('hidden');
+        }
+
+        // 隐藏个人资料区域
+        const userProfileContainer = document.getElementById('user-profile');
+        if (userProfileContainer) {
+          userProfileContainer.classList.add('hidden');
+        }
+
+        return;
+      }
+
+      // 检查订阅状态
+      chrome.storage.sync.get(['subscription', 'subscriptionSource'], (data) => {
+        // 根据订阅数据更新UI
+        if (data.subscription) {
+          updateSubscriptionUI(data.subscription);
+        } else {
+          // 如果没有订阅数据，尝试获取最新状态
+          updateUserSubscription();
+        }
+      });
+    });
+  } catch (error) {
+    console.error('检查订阅状态时出错:', error);
+  }
+}
+
+// 更新用户订阅状态
+async function updateUserSubscription() {
+  try {
+    // 获取当前订阅信息
+    // 声明subscriptionInfo变量
+    let subscriptionInfo = null;
+
+    // 检查 Clerk 用户数据
+    chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete'], async (result) => {
+      // 如果没有登录，则无需更新
+      if (!result.authComplete || !result.clerkUser) {
+        console.log('用户未登录，无法更新订阅状态');
+        return;
+      }
+
+      // 获取本地存储的数据
+      const clerkUserObj = JSON.parse(result.clerkUser);
+      console.log('检查用户订阅，用户ID:', clerkUserObj.id);
+
+      // 检查 Clerk 用户是否有 isPro 标签
+      const isPro = clerkUserObj.publicMetadata && clerkUserObj.publicMetadata.isPro === true;
+
+      if (isPro) {
+        // 用户是Pro用户 - 设置活跃订阅
+        console.log('用户拥有Pro元数据标记，设置为Pro订阅');
+        subscriptionInfo = {
+          status: 'active',
+          features: {
+            countdown: true
+          },
+          source: 'clerk_metadata'
+        };
+      } else {
+        // 尝试本地后端
+        try {
+          const checkResponse = await new Promise((resolve) => {
+            chrome.runtime.sendMessage(
+              {
+                action: 'checkUserLicense',
+                userId: clerkUserObj.id
+              },
+              (response) => {
+                resolve(response);
+              }
+            );
+          });
+
+          console.log('许可检查响应:', checkResponse);
+
+          if (checkResponse && checkResponse.data && checkResponse.data.license_valid) {
+            // 设置活跃订阅
+            console.log('许可有效，设置为Pro订阅');
+            subscriptionInfo = {
+              status: 'active',
+              features: {
+                countdown: true
+              },
+              source: 'license_api'
+            };
+          }
+        } catch (error) {
+          console.error('检查许可时出错:', error);
+        }
+      }
+
+      // 如果没有Pro订阅，检查试用状态
+      if (!subscriptionInfo || subscriptionInfo.status !== 'active') {
+        chrome.storage.sync.get(['trialData'], (result) => {
+          if (result.trialData) {
+            const { trialStartedAt } = result.trialData;
+
+            if (trialStartedAt) {
+              const now = new Date();
+              const trialStart = new Date(trialStartedAt);
+              const trialEnd = new Date(trialStart);
+              trialEnd.setDate(trialStart.getDate() + 14); // 14天试用期
+
+              if (now < trialEnd) {
+                // 试用期内
+                const daysLeft = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
+                console.log('用户在试用期内，剩余天数:', daysLeft);
+
+                subscriptionInfo = {
+                  status: 'trial',
+                  features: {
+                    countdown: true
+                  },
+                  trialEnds: trialEnd.toISOString(),
+                  daysLeft: daysLeft,
+                  source: 'trial_data'
+                };
+              } else {
+                // 试用已过期
+                console.log('用户试用已过期');
+                subscriptionInfo = {
+                  status: 'expired',
+                  features: {
+                    countdown: false
+                  },
+                  source: 'trial_expired'
+                };
+              }
+            }
+          }
+
+          // 如果没有订阅和试用信息，设为免费用户
+          if (!subscriptionInfo) {
+            console.log('用户无订阅，设为免费用户');
+            subscriptionInfo = {
+              status: 'free',
+              features: {
+                countdown: false
+              },
+              source: 'default'
+            };
+          }
+
+          // 保存订阅信息到存储
+          chrome.storage.sync.set({
+            subscription: subscriptionInfo,
+            subscriptionSource: subscriptionInfo.source
+          }, () => {
+            console.log('订阅信息已保存:', subscriptionInfo);
+            updateSubscriptionUI(subscriptionInfo);
+          });
+        });
+      } else {
+        // 如果有订阅信息，直接保存
+        chrome.storage.sync.set({
+          subscription: subscriptionInfo,
+          subscriptionSource: subscriptionInfo.source
+        }, () => {
+          console.log('订阅信息已保存:', subscriptionInfo);
+          updateSubscriptionUI(subscriptionInfo);
+        });
+      }
+    });
+  } catch (error) {
+    console.error('更新用户订阅状态时出错:', error);
+  }
+}
+
+// 试用状态检查函数
+function checkTrialStatus() {
+  chrome.storage.sync.get(['trialData'], (result) => {
+    let subscriptionInfo = null;
+
+    if (result.trialData) {
+      const { trialStartedAt } = result.trialData;
+
+      if (trialStartedAt) {
+        const now = new Date();
+        const trialStart = new Date(trialStartedAt);
+        const trialEnd = new Date(trialStart);
+        trialEnd.setDate(trialStart.getDate() + 14); // 14天试用期
+
+        if (now < trialEnd) {
+          // 试用期内
+          const daysLeft = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
+          console.log('用户在试用期内，剩余天数:', daysLeft);
+
+          subscriptionInfo = {
+            status: 'trial',
+            features: {
+              countdown: true
+            },
+            trialEnds: trialEnd.toISOString(),
+            daysLeft: daysLeft,
+            source: 'trial_data'
+          };
+        } else {
+          // 试用已过期
+          console.log('用户试用已过期');
+          subscriptionInfo = {
+            status: 'expired',
+            features: {
+              countdown: false
+            },
+            source: 'trial_expired'
+          };
+        }
+      }
+    }
+
+    // 如果没有试用信息，设为免费用户
+    if (!subscriptionInfo) {
+      console.log('用户无试用信息，设为免费用户');
+      subscriptionInfo = {
+        status: 'free',
+        features: {
+          countdown: false
+        },
+        source: 'default'
+      };
+    }
+
+    // 保存订阅信息到存储
+    chrome.storage.sync.set({
+      subscription: subscriptionInfo,
+      subscriptionSource: subscriptionInfo.source
+    }, () => {
+      console.log('试用状态信息已保存:', subscriptionInfo);
+      updateSubscriptionUI(subscriptionInfo);
+    });
+  });
+}
+
+/**
+ * 更新订阅状态UI
+ * @param {Object} subscription 订阅信息
+ */
+function updateSubscriptionUI(subscription) {
+  if (!subscription) return;
+
+  const notLoggedInSection = document.getElementById('not-logged-in');
+  const freeUserSection = document.getElementById('free-user');
+  const proUserSection = document.getElementById('pro-user');
+  const subscriptionStatus = document.getElementById('subscription-status');
+
+  console.log('更新订阅UI，状态:', subscription.status);
+
+  // 更新订阅状态文本
+  if (subscriptionStatus) {
+    switch(subscription.status) {
+      case 'active':
+      case 'pro':
+        subscriptionStatus.textContent = 'PRO';
+        subscriptionStatus.style.color = '#4CAF50'; // 绿色
+        break;
+      case 'trial':
+        subscriptionStatus.textContent = '试用中';
+        subscriptionStatus.style.color = '#2196F3'; // 蓝色
+        break;
+      case 'expired':
+        subscriptionStatus.textContent = '已过期';
+        subscriptionStatus.style.color = '#f44336'; // 红色
+        break;
+      case 'free':
+        subscriptionStatus.textContent = '免费版';
+        subscriptionStatus.style.color = '#757575'; // 灰色
+        break;
+      default:
+        subscriptionStatus.textContent = '未知';
+        subscriptionStatus.style.color = '#757575'; // 灰色
+    }
+  }
+
+  // 更新UI部分的显示/隐藏
+  if (subscription.status === 'active' || subscription.status === 'pro') {
+    // Pro用户
+    if (notLoggedInSection) notLoggedInSection.style.display = 'none';
+    if (freeUserSection) freeUserSection.style.display = 'none';
+    if (proUserSection) proUserSection.style.display = 'block';
+
+    // 更新倒计时按钮状态
+    updateCountdownButtonState(true);
+  } else {
+    // 免费用户或试用用户
+    if (notLoggedInSection) notLoggedInSection.style.display = 'none';
+    if (freeUserSection) freeUserSection.style.display = 'block';
+    if (proUserSection) proUserSection.style.display = 'none';
+
+    // 更新试用状态显示
+    const trialStatusElem = document.getElementById('trial-status');
+    if (trialStatusElem) {
+      if (subscription.status === 'trial') {
+        trialStatusElem.textContent = `试用中 (剩余${subscription.daysLeft || 0}天)`;
+        trialStatusElem.style.color = '#2196F3'; // 蓝色
+
+        // 更新倒计时按钮状态 - 试用期也可使用倒计时功能
+        updateCountdownButtonState(true);
+      } else if (subscription.status === 'expired') {
+        trialStatusElem.textContent = '试用已过期';
+        trialStatusElem.style.color = '#f44336'; // 红色
+
+        // 更新倒计时按钮状态
+        updateCountdownButtonState(false);
+      } else {
+        trialStatusElem.textContent = '未开始试用';
+        trialStatusElem.style.color = '#757575'; // 灰色
+
+        // 更新倒计时按钮状态
+        updateCountdownButtonState(false);
+      }
+    }
+  }
+
+  // 更新调试信息
+  const debugStatus = document.getElementById('debug-status');
+  if (debugStatus) {
+    debugStatus.textContent += `\n订阅状态: ${subscription.status}`;
+    if (subscription.source) {
+      debugStatus.textContent += `\n订阅来源: ${subscription.source}`;
+    }
+  }
+}
+
+/**
+ * 更新倒计时按钮状态
+ * @param {boolean} enabled 是否启用
+ */
+function updateCountdownButtonState(enabled) {
+  const countdownSection = document.getElementById('countdown-section');
+  if (countdownSection) {
+    countdownSection.style.opacity = enabled ? '1' : '0.5';
+    countdownSection.style.pointerEvents = enabled ? 'auto' : 'none';
+  }
+}
+
+/**
+ * 检查用户登录状态
+ * 这个函数用于检查用户是否已登录，并返回登录状态
+ * @returns {Promise<boolean>} 是否已登录
+ */
+function checkUserLoginStatus() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['clerkToken', 'clerkUser', 'authComplete'], (data) => {
+      // 如果有token和用户数据，认为用户已登录
+      const isLoggedIn = !!(data.clerkToken && data.clerkUser && data.authComplete);
+      console.log('用户登录状态检查:', isLoggedIn ? '已登录' : '未登录');
+
+      // 如果在popup环境，更新UI
+      updateLoginUI(isLoggedIn, data.clerkUser);
+
+      resolve(isLoggedIn);
+    });
+  });
+}
+
+/**
+ * 更新登录状态UI
+ * @param {boolean} isLoggedIn 是否登录
+ * @param {string} userData 用户数据
+ */
+function updateLoginUI(isLoggedIn, userData) {
+  const notLoggedInSection = document.getElementById('not-logged-in');
+  const freeUserSection = document.getElementById('free-user');
+  const proUserSection = document.getElementById('pro-user');
+
+  if (!notLoggedInSection) return; // 如果UI元素不存在，直接返回
+
+  if (isLoggedIn) {
+    // 已登录 - 隐藏未登录区域
+    notLoggedInSection.style.display = 'none';
+
+    // 用户信息处理将由checkAuthAndUpdateUI函数处理
+  } else {
+    // 未登录 - 显示登录区域
+    notLoggedInSection.style.display = 'block';
+    if (freeUserSection) freeUserSection.style.display = 'none';
+    if (proUserSection) proUserSection.style.display = 'none';
+  }
+}
+
+/**
+ * 加载工作时间设置
+ */
+function loadSettings() {
+  try {
+    console.log('加载工作时间设置...');
+
+    // 获取开始时间和结束时间输入框
+    const startTimeInput = document.getElementById('start-time');
+    const endTimeInput = document.getElementById('end-time');
+
+    if (!startTimeInput || !endTimeInput) {
+      console.warn('未找到时间设置输入框');
+      return;
+    }
+
+    // 从存储中获取设置
+    chrome.storage.sync.get(['startTime', 'endTime', 'countdownDuration'], function(result) {
+      if (result.startTime) {
+        startTimeInput.value = result.startTime;
+        console.log('已加载开始时间:', result.startTime);
+      }
+      if (result.endTime) {
+        endTimeInput.value = result.endTime;
+        console.log('已加载结束时间:', result.endTime);
+      }
+
+      // 如果存在倒计时输入框，设置其值
+      const countdownInput = document.getElementById('countdown-minutes');
+      if (countdownInput && result.countdownDuration) {
+        countdownInput.value = result.countdownDuration;
+        console.log('已加载倒计时时长:', result.countdownDuration);
+      }
+    });
+  } catch (error) {
+    console.error('加载设置时出错:', error);
+  }
+}
+
+/**
+ * 添加事件监听器
+ */
+function attachEventListeners() {
+  try {
+    console.log('添加事件监听器...');
+
+    // 保存设置按钮
+    const saveSettingsBtn = document.getElementById('save-settings');
+    if (saveSettingsBtn) {
+      saveSettingsBtn.addEventListener('click', function() {
+        saveTimeSettings();
+      });
+    }
+
+    // 开始倒计时按钮
+    const startCountdownBtn = document.getElementById('start-countdown');
+    if (startCountdownBtn) {
+      startCountdownBtn.addEventListener('click', function() {
+        startCountdown();
+      });
+    }
+
+    // 隐藏进度条按钮
+    const hideProgressBarBtn = document.getElementById('hide-progress-bar');
+    if (hideProgressBarBtn) {
+      hideProgressBarBtn.addEventListener('click', function() {
+        toggleProgressBarVisibility();
+      });
+    }
+
+    console.log('事件监听器添加完成');
+  } catch (error) {
+    console.error('添加事件监听器时出错:', error);
+  }
+}
+
+/**
+ * 处理来自background.js的消息
+ */
+function handleRuntimeMessages(message, sender, sendResponse) {
+  console.log('收到来自background的消息:', message);
+
+  // 处理认证状态变化
+  if (message.action === 'auth-state-changed') {
+    console.log('收到认证状态变化消息');
+    checkAuthAndUpdateUI();
+    sendResponse({ success: true });
+    return true;
+  }
+
+  // 处理进度条状态变化
+  if (message.action === 'progress-bar-state-changed') {
+    console.log('收到进度条状态变化消息:', message.hidden);
+    // 更新按钮状态
+    const toggleBtn = document.getElementById('toggle-btn');
+    if (toggleBtn) {
+      updateButtonState(toggleBtn, message.hidden);
+    }
+    sendResponse({ success: true });
+    return true;
+  }
+
+  // 处理订阅状态变化
+  if (message.action === 'subscription-state-changed') {
+    console.log('收到订阅状态变化消息');
+    checkSubscriptionStatus();
+    sendResponse({ success: true });
+    return true;
+  }
+
+  return false; // 不处理的消息
+}
+
+/**
+ * 保存时间设置
+ */
+function saveTimeSettings() {
+  try {
+    const startTimeInput = document.getElementById('start-time');
+    const endTimeInput = document.getElementById('end-time');
+
+    if (!startTimeInput || !endTimeInput) {
+      console.error('未找到时间设置输入框');
+      return;
+    }
+
+    const startTime = startTimeInput.value;
+    const endTime = endTimeInput.value;
+
+    // 验证输入
+    if (!startTime || !endTime) {
+      alert('请输入有效的开始和结束时间');
+      return;
+    }
+
+    // 保存到storage
+    chrome.storage.sync.set({
+      startTime: startTime,
+      endTime: endTime
+    }, function() {
+      console.log('工作时间已保存:', startTime, '至', endTime);
+
+      // 通知content脚本更新进度条
+      chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        if (tabs[0] && tabs[0].id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'updateWorkHours',
+            startTime: startTime,
+            endTime: endTime
+          });
+        }
+      });
+
+      // 显示保存成功提示
+      const saveMessage = document.getElementById('save-message');
+      if (saveMessage) {
+        saveMessage.textContent = '设置已保存!';
+        saveMessage.style.display = 'block';
+
+        // 3秒后隐藏提示
+        setTimeout(function() {
+          saveMessage.style.display = 'none';
+        }, 3000);
+      }
+    });
+
+    // 同时获取倒计时时长并保存（如果存在）
+    const countdownInput = document.getElementById('countdown-minutes');
+    if (countdownInput && countdownInput.value) {
+      const countdownDuration = parseInt(countdownInput.value, 10);
+      if (!isNaN(countdownDuration) && countdownDuration > 0) {
+        chrome.storage.sync.set({
+          countdownDuration: countdownDuration
+        }, function() {
+          console.log('倒计时时长已保存:', countdownDuration, '分钟');
+        });
+      }
+    }
+  } catch (error) {
+    console.error('保存设置时出错:', error);
+    alert('保存设置失败，请重试');
+  }
+}
+
+/**
+ * 开始倒计时
+ */
+function startCountdown() {
+  try {
+    const countdownInput = document.getElementById('countdown-minutes');
+    if (!countdownInput) {
+      console.error('未找到倒计时输入框');
+      return;
+    }
+
+    const duration = parseInt(countdownInput.value, 10);
+    if (isNaN(duration) || duration <= 0) {
+      alert('请输入有效的倒计时时长（分钟）');
+      return;
+    }
+
+    console.log('开始倒计时:', duration, '分钟');
+
+    // 保存倒计时时长
+    chrome.storage.sync.set({
+      countdownDuration: duration
+    });
+
+    // 向所有标签页发送开始倒计时消息
+    chrome.tabs.query({}, function(tabs) {
+      tabs.forEach(function(tab) {
+        if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+          chrome.tabs.sendMessage(tab.id, {
+            action: 'startCountdown',
+            duration: duration
+          });
+        }
+      });
+    });
+
+    // 显示倒计时已开始提示
+    const countdownMessage = document.getElementById('countdown-message');
+    if (countdownMessage) {
+      countdownMessage.textContent = `${duration}分钟倒计时已开始!`;
+      countdownMessage.style.display = 'block';
+
+      // 3秒后隐藏提示
+      setTimeout(function() {
+        countdownMessage.style.display = 'none';
+      }, 3000);
+    }
+  } catch (error) {
+    console.error('开始倒计时时出错:', error);
+    alert('开始倒计时失败，请重试');
+  }
+}
+
+/**
+ * 切换进度条可见性
+ */
+function toggleProgressBarVisibility() {
+  chrome.storage.sync.get(['dayProgressBarHidden'], function(result) {
+    const currentlyHidden = result.dayProgressBarHidden || false;
+    const newState = !currentlyHidden;
+
+    // 保存新状态
+    chrome.storage.sync.set({ 'dayProgressBarHidden': newState }, function() {
+      console.log('进度条可见性已更改为:', newState ? '隐藏' : '显示');
+
+      // 向所有标签页发送切换消息
+      chrome.tabs.query({}, function(tabs) {
+        tabs.forEach(function(tab) {
+          if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
+            chrome.tabs.sendMessage(tab.id, {
+              action: 'toggleProgressBar',
+              hidden: newState
+            });
+          }
+        });
+      });
+
+      // 更新按钮文本
+      const hideBtn = document.getElementById('hide-progress-bar');
+      if (hideBtn) {
+        hideBtn.textContent = newState ? '显示进度条' : '隐藏进度条';
+      }
+    });
+  });
+}
+
+/**
+ * 设置开关按钮状态
+ */
+function loadToggleButtonState() {
+  chrome.storage.sync.get(['dayProgressBarHidden'], function(result) {
+    const isHidden = result.dayProgressBarHidden || false;
+
+    // 更新隐藏/显示按钮状态
+    const hideBtn = document.getElementById('hide-progress-bar');
+    if (hideBtn) {
+      hideBtn.textContent = isHidden ? '显示进度条' : '隐藏进度条';
+    }
+
+    console.log('加载进度条状态:', isHidden ? '隐藏' : '显示');
+  });
 }

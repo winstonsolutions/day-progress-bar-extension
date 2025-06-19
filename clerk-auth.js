@@ -308,56 +308,13 @@ async function handleAuthCallback(token, user) {
 
         console.log('已自动启动Pro试用，试用开始时间:', new Date(trialData.startTime).toLocaleString());
 
-        // 尝试同步到Supabase
-        try {
-          // 检查是否有可用的Supabase函数
-          if (typeof self.DayProgressBarAPI !== 'undefined' && typeof self.DayProgressBarAPI.createOrUpdateUserInSupabase === 'function') {
-            console.log('尝试更新Supabase中的trial_started_at字段...');
-            await self.DayProgressBarAPI.createOrUpdateUserInSupabase({
-              clerkId: currentUser.id,
-              email: currentUser.email,
-              firstName: currentUser.firstName,
-              lastName: currentUser.lastName,
-              trial_started_at: new Date().toISOString()
-            });
-            console.log('成功更新Supabase中的trial_started_at字段');
-          } else {
-            console.log('Supabase函数不可用，无法同步试用状态');
-          }
-        } catch (supabaseError) {
-          console.error('同步试用状态到Supabase失败:', supabaseError);
-        }
+        // 通知background脚本更新状态
+        chrome.runtime.sendMessage({
+          action: 'updateTrialStatus',
+          trialData
+        });
 
-        // 立即通知所有页面更新试用状态
-        try {
-          chrome.runtime.sendMessage({
-            action: "trial-status-updated",
-            isActive: true,
-            trialStartTime: trialData.startTime,
-            trialEndTime: trialData.startTime + (60 * 60 * 1000)
-          });
-
-          // 也将试用数据保存到userData中，确保在dashboard中能够正确显示
-          const existingUserData = await new Promise((resolve) => {
-            chrome.storage.sync.get(['userData'], (result) => {
-              resolve(result.userData || {});
-            });
-          });
-
-          chrome.storage.sync.set({
-            userData: {
-              ...existingUserData,
-              id: currentUser.id,
-              email: currentUser.email,
-              trialStartTime: trialData.startTime
-            }
-          });
-
-          console.log('试用状态已通知所有页面并保存到userData');
-        } catch (e) {
-          console.error('通知试用状态失败:', e);
-        }
-
+        return currentUser;
       } else {
         console.log('用户已在试用期内，无需重新启动试用');
 

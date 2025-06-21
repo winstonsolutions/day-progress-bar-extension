@@ -5,6 +5,11 @@
 
 // Self-executing function to isolate variables from global scope
 (function() {
+  // 检查是否已经加载工具库
+  if (typeof window.ExtensionUtils === 'undefined') {
+    console.warn('[内容脚本] ExtensionUtils工具库未加载，部分功能可能不可用');
+  }
+
   // Check if script is already initialized
   if (window.__DPB_MESSAGE_BRIDGE_INITIALIZED__) {
     console.log('[内容脚本] 消息桥接已经初始化，跳过重复执行');
@@ -54,27 +59,51 @@
             source: 'content-script-localStorage'
           };
 
-          chrome.runtime.sendMessage(completeAuthData)
-            .then(response => {
-              console.log('[内容脚本] background响应localStorage认证:', response);
+          // 使用安全发送消息函数（如果可用）
+          if (window.ExtensionUtils && typeof window.ExtensionUtils.safeSendMessage === 'function') {
+            window.ExtensionUtils.safeSendMessage(completeAuthData,
+              response => {
+                console.log('[内容脚本] background响应localStorage认证:', response);
 
-              // 如果成功，清除localStorage中的数据
-              if (response && response.success) {
-                console.log('[内容脚本] 认证成功，清除localStorage数据');
-                localStorage.removeItem('auth_data_for_extension');
-                localStorage.removeItem('auth_token_for_extension');
+                // 如果成功，清除localStorage中的数据
+                if (response && response.success) {
+                  console.log('[内容脚本] 认证成功，清除localStorage数据');
+                  localStorage.removeItem('auth_data_for_extension');
+                  localStorage.removeItem('auth_token_for_extension');
 
-                // 通知页面认证成功
-                window.postMessage({
-                  type: 'auth_received',
-                  source: 'day-progress-bar-extension',
-                  success: true
-                }, '*');
+                  // 通知页面认证成功
+                  window.postMessage({
+                    type: 'auth_received',
+                    source: 'day-progress-bar-extension',
+                    success: true
+                  }, '*');
+                }
               }
-            })
-            .catch(error => {
-              console.error('[内容脚本] 发送localStorage认证数据失败:', error);
-            });
+            );
+          } else {
+            // 如果安全函数不可用，回退到标准API
+            chrome.runtime.sendMessage(completeAuthData)
+              .then(response => {
+                console.log('[内容脚本] background响应localStorage认证:', response);
+
+                // 如果成功，清除localStorage中的数据
+                if (response && response.success) {
+                  console.log('[内容脚本] 认证成功，清除localStorage数据');
+                  localStorage.removeItem('auth_data_for_extension');
+                  localStorage.removeItem('auth_token_for_extension');
+
+                  // 通知页面认证成功
+                  window.postMessage({
+                    type: 'auth_received',
+                    source: 'day-progress-bar-extension',
+                    success: true
+                  }, '*');
+                }
+              })
+              .catch(error => {
+                console.error('[内容脚本] 发送localStorage认证数据失败:', error);
+              });
+          }
         } else {
           console.log('[内容脚本] 认证数据太旧，忽略');
           // 清除旧数据
@@ -108,28 +137,51 @@
       console.log('[内容脚本] 收到clerk认证成功消息，转发到background');
 
       // 转发消息到扩展的background脚本
-      chrome.runtime.sendMessage({
-        action: 'clerk-auth-success',
-        token: message.token,
-        user: message.user, // 确保转发用户数据
-        source: 'content-script',
-        origin: event.origin,
-        originalMessage: message
-      })
-      .then(response => {
-        console.log('[内容脚本] background响应:', response);
+      if (window.ExtensionUtils && typeof window.ExtensionUtils.safeSendMessage === 'function') {
+        window.ExtensionUtils.safeSendMessage({
+          action: 'clerk-auth-success',
+          token: message.token,
+          user: message.user, // 确保转发用户数据
+          source: 'content-script',
+          origin: event.origin,
+          originalMessage: message
+        },
+        response => {
+          console.log('[内容脚本] background响应:', response);
 
-        // 回复页面
-        window.postMessage({
-          type: 'auth_received',
-          source: 'day-progress-bar-extension',
-          success: !!response?.success,
-          message: response?.success ? '认证成功' : '认证失败'
-        }, event.origin || '*');
-      })
-      .catch(error => {
-        console.error('[内容脚本] 发送消息到background失败:', error);
-      });
+          // 回复页面
+          window.postMessage({
+            type: 'auth_received',
+            source: 'day-progress-bar-extension',
+            success: !!response?.success,
+            message: response?.success ? '认证成功' : '认证失败'
+          }, event.origin || '*');
+        });
+      } else {
+        // 如果安全函数不可用，回退到标准API
+        chrome.runtime.sendMessage({
+          action: 'clerk-auth-success',
+          token: message.token,
+          user: message.user, // 确保转发用户数据
+          source: 'content-script',
+          origin: event.origin,
+          originalMessage: message
+        })
+        .then(response => {
+          console.log('[内容脚本] background响应:', response);
+
+          // 回复页面
+          window.postMessage({
+            type: 'auth_received',
+            source: 'day-progress-bar-extension',
+            success: !!response?.success,
+            message: response?.success ? '认证成功' : '认证失败'
+          }, event.origin || '*');
+        })
+        .catch(error => {
+          console.error('[内容脚本] 发送消息到background失败:', error);
+        });
+      }
     }
   }
 

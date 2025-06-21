@@ -1,5 +1,180 @@
 // Day Progress Bar - Background Script
 
+// IIFE防止全局变量泄漏
+(async function() {
+  'use strict';
+
+  // 检查是否为开发模式（发布前修改为false）
+  const DEVELOPMENT_MODE = true;
+
+  // 详细日志控制
+  const VERBOSE_LOGGING = DEVELOPMENT_MODE;
+
+  // 调试日志函数
+  function debugLog(...args) {
+    if (VERBOSE_LOGGING) {
+      console.log('[BACKGROUND]', ...args);
+    }
+  }
+
+  /**
+   * 安全地获取存储值
+   * @param {string|array|object} keys - 要获取的键或键的集合
+   * @param {object} defaultValue - 默认值
+   * @returns {Promise<object>} 存储值
+   */
+  async function safeGetStorage(keys, defaultValue = {}) {
+    try {
+      return await chrome.storage.sync.get(keys);
+    } catch (error) {
+      console.error('获取存储错误:', error);
+      return defaultValue;
+    }
+  }
+
+  /**
+   * 安全地设置存储值
+   * @param {object} data - 要存储的数据
+   */
+  async function safeSetStorage(data) {
+    try {
+      await chrome.storage.sync.set(data);
+      return true;
+    } catch (error) {
+      console.error('设置存储错误:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 安全的API调用包装
+   * @param {Function} apiCall - 要执行的API调用函数
+   * @param {*} fallbackValue - 失败时返回的值
+   */
+  async function safeApiCall(apiCall, fallbackValue) {
+    try {
+      return await apiCall();
+    } catch (error) {
+      console.error('API调用错误:', error);
+      return fallbackValue;
+    }
+  }
+
+  // 初始化扩展
+  async function initializeExtension() {
+    debugLog('初始化扩展...');
+
+    // 检查是否需要设置默认工作时间
+    const settings = await safeGetStorage(['startTime', 'endTime']);
+
+    if (!settings.startTime || !settings.endTime) {
+      debugLog('设置默认工作时间 08:00-16:00');
+      await safeSetStorage({
+        startTime: '08:00',
+        endTime: '16:00'
+      });
+    }
+
+    // 设置默认的进度条状态（如果不存在）
+    const visibilitySettings = await safeGetStorage(['dayProgressBarHidden']);
+
+    if (visibilitySettings.dayProgressBarHidden === undefined) {
+      debugLog('设置默认进度条可见性: 显示');
+      await safeSetStorage({
+        dayProgressBarHidden: false
+      });
+    }
+  }
+
+  // 注册消息处理器
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // 使用异步处理，但需要返回true以保持消息通道开放
+    handleMessage(message, sender).then(sendResponse);
+    return true;
+  });
+
+  // 异步消息处理函数
+  async function handleMessage(message, sender) {
+    debugLog('收到消息:', message);
+
+    if (!message || !message.action) {
+      return { error: 'Invalid message format' };
+    }
+
+    switch (message.action) {
+      case 'updateProgressBarState':
+        return await handleUpdateProgressBarState(message);
+
+      case 'checkFeature':
+        return await handleCheckFeature(message);
+
+      case 'redirect-to-website':
+        return await handleRedirect(message);
+
+      default:
+        debugLog('未知操作:', message.action);
+        return { error: 'Unknown action' };
+    }
+  }
+
+  // 处理进度条状态更新
+  async function handleUpdateProgressBarState(message) {
+    if (message.hidden !== undefined) {
+      debugLog('更新进度条状态:', message.hidden ? '隐藏' : '显示');
+
+      try {
+        await safeSetStorage({
+          dayProgressBarHidden: message.hidden
+        });
+        return { success: true };
+      } catch (error) {
+        debugLog('更新进度条状态失败:', error);
+        return { error: error.message };
+      }
+    }
+
+    return { error: 'Missing required parameter: hidden' };
+  }
+
+  // 处理功能检查
+  async function handleCheckFeature(message) {
+    if (!message.feature) {
+      return { error: 'Missing feature parameter' };
+    }
+
+    // 简单功能检查实现
+    switch (message.feature) {
+      case 'countdown':
+        // 在开发模式下总是启用倒计时功能
+        return { enabled: true };
+
+      default:
+        return { enabled: false, error: 'Unknown feature' };
+    }
+  }
+
+  // 处理重定向请求
+  async function handleRedirect(message) {
+    if (!message.url) {
+      return { error: 'Missing URL parameter' };
+    }
+
+    try {
+      await chrome.tabs.create({ url: message.url });
+      return { success: true };
+    } catch (error) {
+      debugLog('创建标签页失败:', error);
+      return { error: error.message };
+    }
+  }
+
+  // 扩展启动时运行初始化
+  try {
+    await initializeExtension();
+  } catch (error) {
+    console.error('初始化扩展时出错:', error);
+  }
+})();
 
 // 声明API函数变量
 let apiModule;
@@ -195,151 +370,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-// Handle messages from content script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('收到消息:', message);
-
-  // 处理功能检查请求
-  if (message.action === 'checkFeature') {
-    console.log('收到功能检查请求:', message.feature);
-
-    isFeatureEnabled(message.feature)
-      .then(enabled => {
-        console.log(`功能 ${message.feature} 是否启用:`, enabled);
-        sendResponse({ enabled: enabled });
-      })
-      .catch(error => {
-        console.error(`检查功能 ${message.feature} 时出错:`, error);
-        sendResponse({ enabled: false, error: error.message });
-      });
-
-    return true; // 异步响应
-  }
-
-  // 处理更新进度条状态的消息
-  if (message.action === 'updateProgressBarState') {
-    console.log('收到更新进度条状态消息:', message);
-
-    // 如果已经在处理更新，或消息来自存储变化，则跳过
-    if (isProcessingUpdate || message.fromStorageChange) {
-      console.log('跳过更新，因为', isProcessingUpdate ? '正在处理另一个更新' : '消息来自存储变化');
-      sendResponse({ success: true, skipped: true });
-      return true;
-    }
-
-    // 标记正在处理更新
-    isProcessingUpdate = true;
-
-    // 检查是否需要更新（只有当状态实际变化时才更新）
-    if (currentProgressBarState.hidden !== message.hidden) {
-      // 更新本地状态
-      updateProgressBarState(message.hidden);
-
-      // 广播到所有标签页，使用延迟确保不会阻塞
-      setTimeout(() => {
-        chrome.tabs.query({}, function(tabs) {
-          tabs.forEach(tab => {
-            // 只发送到http/https页面
-            if (tab.url && (tab.url.startsWith('http://') || tab.url.startsWith('https://'))) {
-              // 不要发送到源标签页（避免循环）
-              if (!sender || sender.tab?.id !== tab.id) {
-                chrome.tabs.sendMessage(tab.id, {
-                  action: 'toggleProgressBar',
-                  hidden: message.hidden,
-                  fromBackgroundSync: true  // 标记这是来自后台的同步，避免内容脚本再次触发更新
-                }, function() {
-                  // 使用chrome.runtime.lastError检查错误
-                  if (chrome.runtime.lastError) {
-                    // 忽略错误，某些标签页可能没有内容脚本
-                    console.log(`向标签页 ${tab.id} 发送消息失败 (可忽略):`, chrome.runtime.lastError.message);
-                  }
-                });
-              }
-            }
-          });
-
-          // 处理完成后，重置标志
-          isProcessingUpdate = false;
-        });
-      }, 50);
-    } else {
-      console.log('进度条状态未变化，跳过更新');
-      isProcessingUpdate = false;
-    }
-
-    sendResponse({ success: true });
-    return true;
-  }
-
-  // 处理获取用户状态的请求
-  if (message.action === 'get-user-status') {
-    getUserStatus()
-      .then(status => {
-        sendResponse(status);
-      })
-      .catch(error => {
-        console.error('获取用户状态时出错:', error);
-        sendResponse({ error: error.message });
-      });
-    return true; // 异步响应
-  }
-
-  // 处理开始试用的请求
-  if (message.action === 'start-trial') {
-    startProTrial(message.userId, message.email)
-      .then(result => {
-        sendResponse(result);
-      })
-      .catch(error => {
-        console.error('开始试用时出错:', error);
-        sendResponse({ success: false, message: error.message });
-      });
-    return true; // 异步响应
-  }
-
-  // 重定向到网站
-  if (message.action === 'redirect-to-website') {
-    const url = message.url || 'http://localhost:3000/dashboard';
-    chrome.tabs.create({ url });
-    sendResponse({ success: true });
-    return true; // 异步响应
-  }
-
-  // 打开仪表盘
-  if (message.action === 'openDashboard') {
-    openDashboard()
-      .then(() => {
-        sendResponse({ success: true });
-      })
-      .catch(error => {
-        console.error('打开仪表盘时出错:', error);
-        sendResponse({ success: false, message: error.message });
-      });
-    return true; // 异步响应
-  }
-
-
-
-
-
-  // 处理检查用户许可证的请求
-  if (message.action === 'checkUserLicense') {
-    console.log('收到检查用户许可证的请求, userId:', message.userId);
-    sendResponse({
-      success: true,
-      data: {
-        id: message.userId,
-        license_valid: false,  // 将默认值改为false，除非确认用户有Pro许可
-        license_type: 'free',
-        expires_at: null
-      }
-    });
-    return true;
-  }
-
-  return true; // 表示我们会异步处理消息
-});
-
 // Listen for external messages (from web pages)
 chrome.runtime.onMessageExternal.addListener(
   (message, sender, sendResponse) => {
@@ -461,8 +491,6 @@ chrome.runtime.onMessageExternal.addListener(
             console.log('已根据NextJS传递的isPro字段更新subscription状态:', isPro ? 'pro' : 'free');
           });
 
-
-
           // 通知popup页面更新
           chrome.runtime.sendMessage({
             action: 'auth-state-changed',
@@ -580,8 +608,6 @@ async function getUserStatus() {
       };
     }
 
-
-
     // 检查本地存储的试用状态
     if (userData.trialData) {
       const trialStartTime = userData.trialData.startTime;
@@ -634,8 +660,6 @@ async function getUserStatus() {
           });
         });
 
-
-
         return {
           isPro: false,
           isTrialActive: true,
@@ -684,8 +708,6 @@ async function startProTrial(userId, email) {
     });
 
     console.log('试用数据已保存:', trialData);
-
-
 
     return {
       success: true,

@@ -8,6 +8,26 @@
     "32": "icons/32.png",
     "48": "icons/48.png"
   },
+  "permissions": [
+    "storage",
+    "identity",
+    "notifications",
+    "contextMenus",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "https://*.googleapis.com/",
+    "https://*.accounts.dev/",
+    "https://accounts.dev/",
+    "https://api.clerk.dev/",
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_title": "Work Hours Progress Bar",
     "default_popup": "popup.html",
@@ -19,30 +39,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["style.css"]
-    },
-    {
-      "matches": [
-        "http://localhost:3000/*"
-      ],
-      "js": ["content-message-bridge.js"],
-      "run_at": "document_start"
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["extension-utils.js", "content-message-bridge.js", "content.js"],
+      "css": ["style.css"],
+      "run_at": "document_end"
     }
   ],
-  "permissions": ["storage", "identity", "notifications", "contextMenus", "tabs", "scripting"],
-  "optional_permissions": [],
-  "host_permissions": [
-    "https://*.googleapis.com/",
-    "https://*.accounts.dev/",
-    "https://accounts.dev/",
-    "https://api.clerk.dev/",
-    "http://localhost:3000/*"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://*.accounts.dev https://api.clerk.dev http://localhost"
   },
@@ -50,22 +52,23 @@
     "client_id": "${966163827588-v9k3ht1k0a9acbsgt26n831lda9he8qm.apps.googleusercontent.com}",
     "scopes": ["https://www.googleapis.com/auth/userinfo.email"]
   },
-  "externally_connectable": {
-    "matches": [
-      "https://*.accounts.dev/*",
-      "http://localhost:3000/*"
-    ],
-    "accepts_tls_channel_id": false
-  },
   "web_accessible_resources": [
     {
       "resources": [
         "popup.html",
         "clerk-config-check.html",
         "style.css",
+        "extension-utils.js",
         "icons/*"
       ],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://*.accounts.dev/*",
+      "http://localhost:3000/*"
+    ],
+    "accepts_tls_channel_id": false
+  }
 }

@@ -1,8 +1,7 @@
 /**
  * Day Progress Bar Extension Popup UI Controller
  */
-// 移除Supabase配置导入
-// import SUPABASE_CONFIG from './supabase-config.js';
+
 
 // 当弹出界面加载时，初始化按钮状态
 document.addEventListener('DOMContentLoaded', async function() {

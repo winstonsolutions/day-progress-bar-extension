@@ -66,23 +66,41 @@ function loadSettings() {
   });
 
   // Check subscription status for countdown feature
-  checkCountdownFeatureStatus();
+  if (isExtensionContextValid()) {
+    checkCountdownFeatureStatus();
+  } else {
+    console.warn('扩展上下文已失效，无法检查倒计时功能状态');
+    isCountdownFeatureEnabled = false;
+    updateCountdownButtonVisibility();
+  }
 }
 
 // Check if countdown feature is enabled
 function checkCountdownFeatureStatus() {
-  chrome.runtime.sendMessage(
-    { action: 'checkFeature', feature: 'countdown' },
-    function(response) {
-      if (response) {
-        isCountdownFeatureEnabled = response.enabled;
-        console.log('倒计时功能状态已更新:', isCountdownFeatureEnabled ? '已启用' : '未启用');
+  try {
+    chrome.runtime.sendMessage(
+      { action: 'checkFeature', feature: 'countdown' },
+      function(response) {
+        if (chrome.runtime.lastError) {
+          console.error('发送消息时出错:', chrome.runtime.lastError);
+          // Set a default value or retry logic
+          isCountdownFeatureEnabled = false;
+          updateCountdownButtonVisibility();
+          return;
+        }
 
-        // 直接使用从background.js获取的状态结果
-        updateCountdownButtonVisibility();
+        if (response) {
+          isCountdownFeatureEnabled = response.enabled;
+          console.log('倒计时功能状态已更新:', isCountdownFeatureEnabled ? '已启用' : '未启用');
+          updateCountdownButtonVisibility();
+        }
       }
-    }
-  );
+    );
+  } catch (e) {
+    console.error('检查倒计时功能状态时出错:', e);
+    isCountdownFeatureEnabled = false;
+    updateCountdownButtonVisibility();
+  }
 }
 
 // Update countdown button visibility based on subscription status
@@ -1249,3 +1267,13 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 
   return true; // 表示我们会异步处理消息
 });
+
+// 添加到content.js顶部
+function isExtensionContextValid() {
+  try {
+    // 尝试访问chrome.runtime.id，这会在上下文无效时抛出异常
+    return !!chrome.runtime.id;
+  } catch (e) {
+    return false;
+  }
+}

@@ -1,6 +1,5 @@
 // Day Progress Bar - Background Script
 
-// 移除 Supabase 库导入
 
 // 声明API函数变量
 let apiModule;
@@ -319,60 +318,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // 异步响应
   }
 
-  // 处理初始化Supabase的请求
-  if (message.action === 'initSupabase') {
-    console.log('收到初始化Supabase的请求');
-    if (apiModule && typeof apiModule.initSupabase === 'function') {
-      const supabaseClient = apiModule.initSupabase(message.url, message.anonKey);
-      sendResponse({
-        success: !!supabaseClient
-      });
-    } else {
-      sendResponse({
-        success: false,
-        error: 'Supabase API模块未加载'
-      });
-    }
-    return true;
-  }
 
-  // 处理获取Supabase用户数据的请求
-  if (message.action === 'getUserFromSupabase') {
-    console.log('收到获取Supabase用户数据的请求, clerkId:', message.clerkId);
-    if (!message.clerkId) {
-      console.error('错误: 获取Supabase用户数据请求缺少clerkId');
-      sendResponse({
-        success: false,
-        error: 'Missing clerkId parameter'
-      });
-      return true;
-    }
 
-    if (apiModule && typeof apiModule.getUserFromSupabase === 'function') {
-      apiModule.getUserFromSupabase(message.clerkId)
-        .then(data => {
-          console.log('Supabase用户数据查询结果:', data ? '成功' : '未找到数据');
-          sendResponse({
-            success: true,
-            data: data
-          });
-        })
-        .catch(error => {
-          console.error('Supabase用户数据查询错误:', error);
-          sendResponse({
-            success: false,
-            error: error.message
-          });
-        });
-    } else {
-      console.error('Supabase API模块未正确加载');
-      sendResponse({
-        success: false,
-        error: 'Supabase API模块未加载'
-      });
-    }
-    return true;
-  }
+
 
   // 处理检查用户许可证的请求
   if (message.action === 'checkUserLicense') {
@@ -462,28 +410,6 @@ chrome.runtime.onMessageExternal.addListener(
           isTestMode: false
         }, () => {
           console.log('成功将认证信息存储到chrome.storage');
-
-          // 同步用户数据到Supabase
-          if (apiModule && typeof apiModule.createOrUpdateUserInSupabase === 'function' && userObj.id) {
-            console.log('尝试将用户数据同步到Supabase:', userObj);
-
-            // 构建用户数据对象
-            const supabaseUserData = {
-              clerkId: userObj.id,
-              email: userObj.email || `user_${userObj.id.substring(0, 8)}@example.com`,
-              firstName: userObj.firstName || userObj.first_name || '',
-              lastName: userObj.lastName || userObj.last_name || ''
-            };
-
-            // 创建或更新Supabase中的用户
-            apiModule.createOrUpdateUserInSupabase(supabaseUserData)
-              .then(result => {
-                console.log('用户数据同步到Supabase结果:', result);
-              })
-              .catch(err => {
-                console.error('同步用户数据到Supabase失败:', err);
-              });
-          }
         });
 
         sendResponse({ success: true });
@@ -535,21 +461,7 @@ chrome.runtime.onMessageExternal.addListener(
             console.log('已根据NextJS传递的isPro字段更新subscription状态:', isPro ? 'pro' : 'free');
           });
 
-          // 同步用户数据到Supabase
-          if (apiModule && typeof apiModule.getUserFromSupabase === 'function' && userData.id) {
-            console.log('尝试从Supabase获取用户数据，clerkId:', userData.id);
 
-            // 先尝试获取用户
-            apiModule.getUserFromSupabase(userData.id)
-              .then(data => {
-                console.log('Supabase用户查询结果:', data ? '找到用户' : '未找到用户');
-                // 如果用户存在，不需要额外操作
-                // 如果用户不存在，后面的getUserFromSupabase会自动创建
-              })
-              .catch(err => {
-                console.error('从Supabase获取用户数据失败:', err);
-              });
-          }
 
           // 通知popup页面更新
           chrome.runtime.sendMessage({
@@ -668,28 +580,7 @@ async function getUserStatus() {
       };
     }
 
-    // 尝试从Supabase获取许可证信息
-    try {
-      // 首先获取用户认证信息
-      const authData = await new Promise((resolve) => {
-        chrome.storage.local.get(['clerkUser'], (result) => {
-          resolve(result);
-        });
-      });
 
-      // 解析clerkUser数据
-      if(authData.clerkUser) {
-        const supabaseUser = JSON.parse(authData.clerkUser);
-
-        // 默认授予Pro许可
-        return {
-          isPro: true,
-          source: 'auto_approved'
-        };
-      }
-    } catch (error) {
-      console.error('获取许可证状态时出错:', error);
-    }
 
     // 检查本地存储的试用状态
     if (userData.trialData) {
@@ -743,14 +634,7 @@ async function getUserStatus() {
           });
         });
 
-        // 尝试同步到Supabase
-        try {
-          if (typeof apiModule !== 'undefined' && typeof apiModule.updateUserTrialStatus === 'function') {
-            await apiModule.updateUserTrialStatus(clerkUser.id, new Date(trialData.startTime).toISOString());
-          }
-        } catch (e) {
-          console.error('同步试用状态到Supabase失败:', e);
-        }
+
 
         return {
           isPro: false,
@@ -801,16 +685,7 @@ async function startProTrial(userId, email) {
 
     console.log('试用数据已保存:', trialData);
 
-    // 同步到Supabase（如果可用）
-    try {
-      if (apiModule && typeof apiModule.updateUserTrialStatus === 'function') {
-        await apiModule.updateUserTrialStatus(userId, new Date(now).toISOString());
-        console.log('试用状态已同步到Supabase');
-      }
-    } catch (supabaseError) {
-      console.error('同步试用状态到Supabase失败:', supabaseError);
-      // 继续处理，不影响本地试用
-    }
+
 
     return {
       success: true,
